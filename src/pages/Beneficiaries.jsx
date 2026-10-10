@@ -76,7 +76,8 @@ const Beneficiaries = () => {
   const filteredBeneficiaries = data.beneficiaries.filter(b => 
     b.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     b.doc.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (b.email && b.email.toLowerCase().includes(searchTerm.toLowerCase()))
+    (b.email && b.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    ((b.referente || b.referredBy || '').toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -86,19 +87,20 @@ const Beneficiaries = () => {
           <h1>Beneficiarios</h1>
           <p>Gestión de personas inscritas al club de beneficios</p>
         </div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
           <div className="input-group" style={{ margin: 0, width: '250px' }}>
             <div style={{ position: 'relative' }}>
               <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
               <input 
                 type="text" 
                 className="input-field" 
-                placeholder="Buscar por nombre, DNI o email..." 
+                placeholder="Buscar por nombre, DNI o referente..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{ paddingLeft: '32px' }}
               />
             </div>
+            {searchTerm && <div style={{ fontSize: '0.8rem', color: 'var(--primary)', marginTop: '0.25rem', textAlign: 'right' }}>Resultados encontrados: {filteredBeneficiaries.length}</div>}
           </div>
           <button className="btn btn-primary" onClick={() => {
             setNewB({ id: null, name: '', doc: '', email: '', phone: '', plan: 'silver', paymentMethod: 'efectivo', referente: '', foto_frente: '', foto_dorso: '' });
@@ -225,7 +227,12 @@ const Beneficiaries = () => {
               
               <div className="input-group" style={{ gridColumn: '1 / -1' }}>
                 <label>Ingresado Por (Referente)</label>
-                <input type="text" className="input-field" value={newB.referente} onChange={e => setNewB({...newB, referente: e.target.value})} placeholder="Ej. Nicolas" />
+                <input type="text" list="referentes-list" className="input-field" value={newB.referente} onChange={e => setNewB({...newB, referente: e.target.value})} placeholder="Ej. Nicolas" />
+                <datalist id="referentes-list">
+                  {Array.from(new Set(data.beneficiaries.map(b => b.referente || b.referredBy).filter(Boolean))).map(ref => (
+                    <option key={ref} value={ref} />
+                  ))}
+                </datalist>
               </div>
 
               <div className="input-group">
