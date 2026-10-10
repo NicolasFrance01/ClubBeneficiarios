@@ -11,7 +11,7 @@ export const initialData = {
     { id: 2, name: 'Maria Gomez', doc: '40987654', email: 'maria@example.com', phone: '1198765432', plan: 'silver', paymentMethod: 'transferencia', status: 'activo', referredBy: 'Nicolas', date: '2026-10-05' }
   ],
   users: [
-    { id: 1, name: 'Nicolas France', role: 'Fundador' }
+    { id: 1, name: 'Nicolas France', role: 'Fundador', email: 'admin@atlascore.com', password: 'admin', needsPasswordChange: false }
   ]
 };
 
