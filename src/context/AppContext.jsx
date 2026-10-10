@@ -1,10 +1,34 @@
-import React, { createContext, useState } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 import { initialData } from '../store';
 
 export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
   const [data, setData] = useState(initialData);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Simple local storage persistence for login state
+  useEffect(() => {
+    const isLogged = localStorage.getItem('atlascore_auth');
+    if (isLogged === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const login = (email, password) => {
+    // Basic mock authentication
+    if (email === 'admin@atlascore.com' || email.includes('atlascore')) {
+      setIsAuthenticated(true);
+      localStorage.setItem('atlascore_auth', 'true');
+      return true;
+    }
+    return false;
+  };
+
+  const logout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('atlascore_auth');
+  };
 
   const updateCommission = (newCommission) => {
     setData(prev => ({ ...prev, commission: parseInt(newCommission) }));
@@ -40,6 +64,9 @@ export const AppProvider = ({ children }) => {
   return (
     <AppContext.Provider value={{
       data,
+      isAuthenticated,
+      login,
+      logout,
       updateCommission,
       addBeneficiary,
       updateBeneficiary,
@@ -50,3 +77,4 @@ export const AppProvider = ({ children }) => {
     </AppContext.Provider>
   );
 };
+
