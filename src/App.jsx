@@ -23,6 +23,15 @@ function App() {
     <BrowserRouter>
       <div className="app-container">
         <aside className={`sidebar glass-panel ${isCollapsed ? 'collapsed' : ''}`}>
+          {/* Toggle Button on the border */}
+          <button 
+            onClick={() => setIsCollapsed(!isCollapsed)} 
+            className="sidebar-toggle-btn"
+            title={isCollapsed ? "Expandir Menú" : "Colapsar Menú"}
+          >
+            {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          </button>
+
           <div className="sidebar-header">
             <ShieldCheck size={32} color="var(--primary)" style={{ minWidth: '32px' }} />
             {!isCollapsed && <h2>Atlascore</h2>}
@@ -57,10 +66,6 @@ function App() {
           </nav>
 
           <div style={{ padding: '1rem', borderTop: '1px solid var(--border-light)', marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <button onClick={() => setIsCollapsed(!isCollapsed)} className="nav-item" style={{ background: 'transparent', border: 'none', width: '100%', cursor: 'pointer', justifyContent: isCollapsed ? 'center' : 'flex-start' }} title="Colapsar menú">
-              {isCollapsed ? <ChevronRight size={20} style={{ minWidth: '20px' }} /> : <ChevronLeft size={20} style={{ minWidth: '20px' }} />}
-              {!isCollapsed && <span>Ocultar Menú</span>}
-            </button>
             <button onClick={logout} className="nav-item" style={{ background: 'transparent', border: 'none', width: '100%', cursor: 'pointer', color: 'var(--danger)', justifyContent: isCollapsed ? 'center' : 'flex-start' }} title="Cerrar Sesión">
               <LogOut size={20} style={{ minWidth: '20px' }} />
               {!isCollapsed && <span>Cerrar Sesión</span>}
