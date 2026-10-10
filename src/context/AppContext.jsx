@@ -39,7 +39,7 @@ export const AppProvider = ({ children }) => {
   }, [data.users]);
 
   const login = (email, password) => {
-    const user = data.users.find(u => u.email === email && u.password === password);
+    const user = data.users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
     if (user) {
       if (user.needsPasswordChange) {
         return { requireChange: true, user };
