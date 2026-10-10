@@ -5,7 +5,7 @@ export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
   const [data, setData] = useState(() => {
-    const savedData = localStorage.getItem('atlascore_data');
+    const savedData = localStorage.getItem('atlascore_data_v2');
     if (savedData) {
       try {
         return JSON.parse(savedData);
@@ -21,13 +21,13 @@ export const AppProvider = ({ children }) => {
 
   // Save data to localStorage whenever it changes
   useEffect(() => {
-    localStorage.setItem('atlascore_data', JSON.stringify(data));
+    localStorage.setItem('atlascore_data_v2', JSON.stringify(data));
   }, [data]);
 
   // Simple local storage persistence for login state
   useEffect(() => {
-    const isLogged = localStorage.getItem('atlascore_auth');
-    const storedUserId = localStorage.getItem('atlascore_user_id');
+    const isLogged = localStorage.getItem('atlascore_auth_v2');
+    const storedUserId = localStorage.getItem('atlascore_user_id_v2');
     
     if (isLogged === 'true' && storedUserId) {
       const u = data.users.find(user => user.id.toString() === storedUserId);
@@ -46,8 +46,8 @@ export const AppProvider = ({ children }) => {
       }
       setIsAuthenticated(true);
       setActiveUser(user);
-      localStorage.setItem('atlascore_auth', 'true');
-      localStorage.setItem('atlascore_user_id', user.id);
+      localStorage.setItem('atlascore_auth_v2', 'true');
+      localStorage.setItem('atlascore_user_id_v2', user.id);
       return { success: true, user };
     }
     return { success: false, error: 'Credenciales incorrectas' };
@@ -63,16 +63,16 @@ export const AppProvider = ({ children }) => {
     if (user) {
       setIsAuthenticated(true);
       setActiveUser({ ...user, password: newPassword, needsPasswordChange: false });
-      localStorage.setItem('atlascore_auth', 'true');
-      localStorage.setItem('atlascore_user_id', userId);
+      localStorage.setItem('atlascore_auth_v2', 'true');
+      localStorage.setItem('atlascore_user_id_v2', userId);
     }
   };
 
   const logout = () => {
     setIsAuthenticated(false);
     setActiveUser(null);
-    localStorage.removeItem('atlascore_auth');
-    localStorage.removeItem('atlascore_user_id');
+    localStorage.removeItem('atlascore_auth_v2');
+    localStorage.removeItem('atlascore_user_id_v2');
   };
 
   const updateCommission = (newCommission) => {

@@ -6,10 +6,8 @@ export const initialData = {
     { id: 'gold', name: 'Plan Gold', basePrice: 42000, description: 'Entrenamiento de alta intensidad y especialidades', includes: 'Crossfit, Boxeo, Hyrox, Rehabilitación Deportiva', sedes: 'Rusia Gym, Kaizen, Charly Box, Arena Training, Otb Training' },
     { id: 'platinum', name: 'Plan Platinum', basePrice: 60000, description: 'Experiencia Premium, Acuática y Bienestar Integral', includes: 'Pileta Libre, Natación, Aquagym, PoleSport, Yoga', sedes: 'Manantial Swim, Red Deporbas, La Rufina, El Club, Acro Flow Studio' }
   ],
-  beneficiaries: [
-    { id: 1, name: 'Juan Perez', doc: '38123456', email: 'juan@example.com', phone: '1123456789', plan: 'gold', paymentMethod: 'efectivo', status: 'activo', referredBy: 'Nicolas', date: '2026-10-01' },
-    { id: 2, name: 'Maria Gomez', doc: '40987654', email: 'maria@example.com', phone: '1198765432', plan: 'silver', paymentMethod: 'transferencia', status: 'activo', referredBy: 'Nicolas', date: '2026-10-05' }
-  ],
+  beneficiaries: [],
+  transactions: [],
   users: [
     { id: 2, name: 'Nicolas France', role: 'Fundador', email: 'nfrance@atlascore.com', password: 'admin', needsPasswordChange: false }
   ]
