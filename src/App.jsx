@@ -13,7 +13,7 @@ import './App.css';
 
 function App() {
   const { isAuthenticated, logout } = useContext(AppContext);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(window.innerWidth <= 768);
 
   if (!isAuthenticated) {
     return <Login />;
