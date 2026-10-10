@@ -38,6 +38,7 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+  zoom: 0.65;
   background-image: 
     radial-gradient(circle at 15% 50%, rgba(251, 191, 36, 0.05), transparent 25%),
     radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.05), transparent 25%);

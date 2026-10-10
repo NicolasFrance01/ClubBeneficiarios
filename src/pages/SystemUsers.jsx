@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { initialData } from '../store';
+import React, { useContext } from 'react';
+import { AppContext } from '../context/AppContext';
 import { Shield, Plus, UserX } from 'lucide-react';
 
 const SystemUsers = () => {
-  const [users, setUsers] = useState(initialData.users);
+  const { data } = useContext(AppContext);
 
   return (
     <div className="system-users-page">
@@ -19,7 +19,7 @@ const SystemUsers = () => {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-        {users.map(user => (
+        {data.users.map(user => (
           <div key={user.id} className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
             <div style={{ 
               width: '60px', 

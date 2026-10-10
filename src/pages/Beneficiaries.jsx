@@ -1,10 +1,20 @@
-import React, { useState } from 'react';
-import { initialData } from '../store';
+import React, { useState, useContext } from 'react';
+import { AppContext } from '../context/AppContext';
 import { Plus, Edit2, Trash2, Camera, Clock, Check } from 'lucide-react';
 
 const Beneficiaries = () => {
-  const [beneficiaries, setBeneficiaries] = useState(initialData.beneficiaries);
+  const { data, addBeneficiary, toggleBeneficiaryStatus } = useContext(AppContext);
   const [showModal, setShowModal] = useState(false);
+  const [newB, setNewB] = useState({ name: '', doc: '', email: '', phone: '', plan: 'silver', paymentMethod: 'efectivo', referente: '' });
+
+  const handleSave = () => {
+    addBeneficiary({
+      ...newB,
+      status: 'activo',
+      date: new Date().toISOString().split('T')[0]
+    });
+    setShowModal(false);
+  };
 
   return (
     <div className="beneficiaries-page">
@@ -33,8 +43,8 @@ const Beneficiaries = () => {
               </tr>
             </thead>
             <tbody>
-              {beneficiaries.map(b => {
-                const plan = initialData.plans.find(p => p.id === b.plan);
+              {data.beneficiaries.map(b => {
+                const plan = data.plans.find(p => p.id === b.plan) || { name: b.plan, id: b.plan };
                 return (
                   <tr key={b.id} style={{ opacity: b.status === 'inactivo' ? 0.5 : 1 }}>
                     <td>
@@ -50,7 +60,7 @@ const Beneficiaries = () => {
                       </div>
                     </td>
                     <td><span className={`badge badge-${plan.id}`}>{plan.name}</span></td>
-                    <td>{b.referredBy}</td>
+                    <td>{b.referente || b.referredBy || '-'}</td>
                     <td>
                       <span className={`badge`} style={{ 
                         background: b.status === 'activo' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
@@ -68,10 +78,7 @@ const Beneficiaries = () => {
                         <button style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: '0.25rem' }} title="Editar">
                           <Edit2 size={18} />
                         </button>
-                        <button style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '0.25rem' }} title={b.status === 'activo' ? "Dar de baja" : "Dar de alta"} onClick={() => {
-                          const updated = beneficiaries.map(ben => ben.id === b.id ? { ...ben, status: ben.status === 'activo' ? 'inactivo' : 'activo' } : ben);
-                          setBeneficiaries(updated);
-                        }}>
+                        <button style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '0.25rem' }} title={b.status === 'activo' ? "Dar de baja" : "Dar de alta"} onClick={() => toggleBeneficiaryStatus(b.id)}>
                           {b.status === 'activo' ? <Trash2 size={18} /> : <Check size={18} />}
                         </button>
                       </div>
@@ -91,30 +98,30 @@ const Beneficiaries = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div className="input-group">
                 <label>Nombre Completo</label>
-                <input type="text" className="input-field" placeholder="Ej. Nicolas France" />
+                <input type="text" className="input-field" value={newB.name} onChange={e => setNewB({...newB, name: e.target.value})} placeholder="Ej. Nicolas France" />
               </div>
               <div className="input-group">
                 <label>Documento (DNI)</label>
-                <input type="text" className="input-field" placeholder="Ej. 12345678" />
+                <input type="text" className="input-field" value={newB.doc} onChange={e => setNewB({...newB, doc: e.target.value})} placeholder="Ej. 12345678" />
               </div>
               <div className="input-group">
                 <label>Email</label>
-                <input type="email" className="input-field" placeholder="correo@ejemplo.com" />
+                <input type="email" className="input-field" value={newB.email} onChange={e => setNewB({...newB, email: e.target.value})} placeholder="correo@ejemplo.com" />
               </div>
               <div className="input-group">
                 <label>Teléfono</label>
-                <input type="text" className="input-field" placeholder="Ej. 351..." />
+                <input type="text" className="input-field" value={newB.phone} onChange={e => setNewB({...newB, phone: e.target.value})} placeholder="Ej. 351..." />
               </div>
               
               <div className="input-group">
                 <label>Plan</label>
-                <select className="input-field">
-                  {initialData.plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                <select className="input-field" value={newB.plan} onChange={e => setNewB({...newB, plan: e.target.value})}>
+                  {data.plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
               <div className="input-group">
                 <label>Método de Pago</label>
-                <select className="input-field">
+                <select className="input-field" value={newB.paymentMethod} onChange={e => setNewB({...newB, paymentMethod: e.target.value})}>
                   <option value="efectivo">Efectivo</option>
                   <option value="transferencia">Transferencia</option>
                 </select>
@@ -122,7 +129,7 @@ const Beneficiaries = () => {
               
               <div className="input-group" style={{ gridColumn: '1 / -1' }}>
                 <label>Ingresado Por (Referente)</label>
-                <input type="text" className="input-field" placeholder="Ej. Nicolas" />
+                <input type="text" className="input-field" value={newB.referente} onChange={e => setNewB({...newB, referente: e.target.value})} placeholder="Ej. Nicolas" />
               </div>
 
               <div className="input-group">
@@ -142,7 +149,7 @@ const Beneficiaries = () => {
             </div>
             <div className="flex-between mt-6">
               <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={() => setShowModal(false)}>Guardar Beneficiario</button>
+              <button className="btn btn-primary" onClick={handleSave}>Guardar Beneficiario</button>
             </div>
           </div>
         </div>

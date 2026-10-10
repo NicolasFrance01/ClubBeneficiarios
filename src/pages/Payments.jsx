@@ -1,36 +1,63 @@
-import React from 'react';
-import { initialData, calculateFinalPrice, calculateFitnessGroupCut } from '../store';
-import { ArrowUpRight, ArrowDownRight, Briefcase, Landmark } from 'lucide-react';
+import React, { useContext, useState, useEffect } from 'react';
+import { AppContext } from '../context/AppContext';
+import { calculateFinalPrice, calculateFitnessGroupCut } from '../store';
+import { ArrowUpRight, ArrowDownRight, Briefcase, Landmark, Plus } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 const Payments = () => {
-  // Mock payment history
-  const paymentHistory = [
+  const { data, addTransaction } = useContext(AppContext);
+  const location = useLocation();
+  const [showModal, setShowModal] = useState(false);
+  const [newTx, setNewTx] = useState({ 
+    beneficiary: '', amount: '', type: 'ingreso', method: 'transferencia', details: 'Cuota Mensual', ref: ''
+  });
+
+  useEffect(() => {
+    if (location.state?.prefill) {
+      const b = location.state.prefill;
+      const plan = data.plans.find(p => p.id === b.plan);
+      const finalPrice = calculateFinalPrice(plan.basePrice, b.paymentMethod, data.commission, data.iva);
+      
+      setNewTx(prev => ({
+        ...prev,
+        beneficiary: b.name,
+        amount: finalPrice,
+        method: b.paymentMethod
+      }));
+      setShowModal(true);
+    }
+  }, [location.state]);
+
+  const handleSaveTx = () => {
+    addTransaction({
+      ...newTx,
+      date: new Date().toISOString().replace('T', ' ').slice(0, 16)
+    });
+    setShowModal(false);
+  };
+
+  const paymentHistory = data.transactions || [
     { id: 101, date: '2026-10-09 10:30', amount: 65000, type: 'ingreso', method: 'transferencia', beneficiary: 'Maria Gomez', details: 'Cuota Octubre', ref: 'TRX-9921' },
-    { id: 102, date: '2026-10-08 15:45', amount: 34000, type: 'ingreso', method: 'efectivo', beneficiary: 'Juan Perez', details: 'Cuota Octubre', ref: 'REC-0012' },
-    { id: 103, date: '2026-10-05 09:00', amount: 45000, type: 'egreso', method: 'transferencia', beneficiary: 'Fitness Group S.A.', details: 'Liquidación Quincenal', ref: 'TRX-1092' },
+    { id: 102, date: '2026-10-08 15:45', amount: 34000, type: 'ingreso', method: 'efectivo', beneficiary: 'Juan Perez', details: 'Cuota Octubre', ref: 'REC-0012' }
   ];
 
   let totalTransferencia = 0;
   let totalEfectivo = 0;
   let fgTransferencia = 0;
   let fgEfectivo = 0;
-  let atlasComisionTotal = 0;
 
-  initialData.beneficiaries.forEach(b => {
+  data.beneficiaries.forEach(b => {
     if (b.status === 'activo') {
-      const plan = initialData.plans.find(p => p.id === b.plan);
-      const fgCut = calculateFitnessGroupCut(plan.basePrice, b.paymentMethod, initialData.iva);
-      
-      atlasComisionTotal += initialData.commission;
-
-      if (b.paymentMethod === 'transferencia') {
-        const finalPrice = calculateFinalPrice(plan.basePrice, 'transferencia', initialData.commission, initialData.iva);
-        totalTransferencia += finalPrice;
-        fgTransferencia += fgCut;
-      } else {
-        const finalPrice = calculateFinalPrice(plan.basePrice, 'efectivo', initialData.commission, initialData.iva);
-        totalEfectivo += finalPrice;
-        fgEfectivo += fgCut;
+      const plan = data.plans.find(p => p.id === b.plan);
+      if (plan) {
+        const fgCut = calculateFitnessGroupCut(plan.basePrice, b.paymentMethod, data.iva);
+        if (b.paymentMethod === 'transferencia') {
+          totalTransferencia += calculateFinalPrice(plan.basePrice, 'transferencia', data.commission, data.iva);
+          fgTransferencia += fgCut;
+        } else {
+          totalEfectivo += calculateFinalPrice(plan.basePrice, 'efectivo', data.commission, data.iva);
+          fgEfectivo += fgCut;
+        }
       }
     }
   });
@@ -42,7 +69,9 @@ const Payments = () => {
           <h1>Pagos e Historial</h1>
           <p>Diferencial de ingresos y liquidaciones a Fitness Groups</p>
         </div>
-        <button className="btn btn-primary">Registrar Transacción</button>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+          <Plus size={18} /> Registrar Transacción
+        </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
@@ -61,7 +90,7 @@ const Payments = () => {
             </div>
             <div className="flex-between" style={{ fontSize: '0.9rem' }}>
               <span style={{ color: 'var(--text-muted)' }}>Comisión Atlascore</span>
-              <strong style={{ color: 'var(--primary)' }}>${(initialData.commission * initialData.beneficiaries.filter(b => b.paymentMethod === 'transferencia' && b.status === 'activo').length).toLocaleString()}</strong>
+              <strong style={{ color: 'var(--primary)' }}>${(totalTransferencia - fgTransferencia).toLocaleString()}</strong>
             </div>
           </div>
         </div>
@@ -81,7 +110,7 @@ const Payments = () => {
             </div>
             <div className="flex-between" style={{ fontSize: '0.9rem' }}>
               <span style={{ color: 'var(--text-muted)' }}>Comisión Atlascore</span>
-              <strong style={{ color: 'var(--primary)' }}>${(initialData.commission * initialData.beneficiaries.filter(b => b.paymentMethod === 'efectivo' && b.status === 'activo').length).toLocaleString()}</strong>
+              <strong style={{ color: 'var(--primary)' }}>${(totalEfectivo - fgEfectivo).toLocaleString()}</strong>
             </div>
           </div>
         </div>
@@ -102,7 +131,7 @@ const Payments = () => {
               </tr>
             </thead>
             <tbody>
-              {paymentHistory.map(tx => (
+              {paymentHistory.slice().reverse().map(tx => (
                 <tr key={tx.id}>
                   <td style={{ fontSize: '0.9rem' }}>{tx.date}</td>
                   <td>
@@ -115,7 +144,7 @@ const Payments = () => {
                   <td>{tx.beneficiary}</td>
                   <td>
                     <span style={{ display: 'block' }}>{tx.details}</span>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Ref: {tx.ref}</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Ref: {tx.ref || '-'}</span>
                   </td>
                   <td style={{ fontWeight: 600 }}>${tx.amount.toLocaleString()}</td>
                 </tr>
@@ -124,6 +153,58 @@ const Payments = () => {
           </table>
         </div>
       </div>
+
+      {showModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '500px' }}>
+            <h2 className="mb-4">Registrar Transacción</h2>
+            
+            <div className="input-group">
+              <label>Entidad / Persona</label>
+              <input type="text" className="input-field" value={newTx.beneficiary} onChange={e => setNewTx({...newTx, beneficiary: e.target.value})} />
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="input-group">
+                <label>Tipo</label>
+                <select className="input-field" value={newTx.type} onChange={e => setNewTx({...newTx, type: e.target.value})}>
+                  <option value="ingreso">Ingreso</option>
+                  <option value="egreso">Egreso</option>
+                </select>
+              </div>
+              <div className="input-group">
+                <label>Monto</label>
+                <input type="number" className="input-field" value={newTx.amount} onChange={e => setNewTx({...newTx, amount: e.target.value})} />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="input-group">
+                <label>Método</label>
+                <select className="input-field" value={newTx.method} onChange={e => setNewTx({...newTx, method: e.target.value})}>
+                  <option value="transferencia">Transferencia</option>
+                  <option value="efectivo">Efectivo</option>
+                  <option value="mixto">Mixto (Varios)</option>
+                </select>
+              </div>
+              <div className="input-group">
+                <label>Referencia / Recibo (Opcional)</label>
+                <input type="text" className="input-field" value={newTx.ref} onChange={e => setNewTx({...newTx, ref: e.target.value})} />
+              </div>
+            </div>
+
+            <div className="input-group mb-6">
+              <label>Detalle</label>
+              <input type="text" className="input-field" value={newTx.details} onChange={e => setNewTx({...newTx, details: e.target.value})} />
+            </div>
+
+            <div className="flex-between">
+              <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={handleSaveTx}>Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

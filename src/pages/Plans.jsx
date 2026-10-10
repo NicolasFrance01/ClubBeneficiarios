@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
-import { initialData, calculateFinalPrice } from '../store';
+import React, { useState, useContext } from 'react';
+import { AppContext } from '../context/AppContext';
+import { calculateFinalPrice } from '../store';
 import { Edit3, CheckCircle2, Info } from 'lucide-react';
 
 const Plans = () => {
-  const [commission, setCommission] = useState(initialData.commission);
+  const { data, updateCommission } = useContext(AppContext);
+  const [localCommission, setLocalCommission] = useState(data.commission);
   const [isEditing, setIsEditing] = useState(false);
 
   const handleSaveCommission = () => {
-    // In a real app, save to backend/context
-    initialData.commission = parseInt(commission);
+    updateCommission(localCommission);
     setIsEditing(false);
   };
 
@@ -28,15 +29,15 @@ const Plans = () => {
                 <input 
                   type="number" 
                   className="input-field" 
-                  value={commission} 
-                  onChange={(e) => setCommission(e.target.value)}
+                  value={localCommission} 
+                  onChange={(e) => setLocalCommission(e.target.value)}
                   style={{ width: '100px', padding: '0.25rem 0.5rem' }}
                 />
                 <button className="btn btn-primary" onClick={handleSaveCommission} style={{ padding: '0.25rem 0.5rem' }}>Guardar</button>
               </div>
             ) : (
               <h3 style={{ margin: 0, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                ${parseInt(commission).toLocaleString()}
+                ${parseInt(data.commission).toLocaleString()}
                 <button onClick={() => setIsEditing(true)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                   <Edit3 size={16} />
                 </button>
@@ -47,7 +48,7 @@ const Plans = () => {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-        {initialData.plans.map(plan => (
+        {data.plans.map(plan => (
           <div key={plan.id} className="glass-panel" style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem', marginBottom: '1rem' }}>
               <span className={`badge badge-${plan.id} mb-4`}>{plan.name}</span>
@@ -74,11 +75,11 @@ const Plans = () => {
               
               <div className="flex-between" style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Pagando en Efectivo:</span>
-                <strong>${calculateFinalPrice(plan.basePrice, 'efectivo', parseInt(commission), initialData.iva).toLocaleString()}</strong>
+                <strong>${calculateFinalPrice(plan.basePrice, 'efectivo', parseInt(data.commission), data.iva).toLocaleString()}</strong>
               </div>
               <div className="flex-between" style={{ fontSize: '0.9rem' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Pagando Transferencia (c/IVA):</span>
-                <strong>${calculateFinalPrice(plan.basePrice, 'transferencia', parseInt(commission), initialData.iva).toLocaleString()}</strong>
+                <strong>${calculateFinalPrice(plan.basePrice, 'transferencia', parseInt(data.commission), data.iva).toLocaleString()}</strong>
               </div>
             </div>
           </div>
