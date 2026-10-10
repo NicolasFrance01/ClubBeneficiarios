@@ -10,6 +10,7 @@ export default async function handler(request, response) {
       onBeforeGenerateToken: async (pathname) => {
         return {
           allowedContentTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif', 'image/bmp', 'application/pdf'],
+          addRandomSuffix: true,
         };
       },
       onUploadCompleted: async ({ blob }) => {
