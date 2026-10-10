@@ -138,13 +138,17 @@
     top: 0;
     left: 0;
     width: 250px;
+    height: 100vh;
     z-index: 1000;
     box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+    transition: left 0.3s ease;
+    transform: none !important;
   }
 
   .sidebar.collapsed {
-    transform: translateX(-100%);
+    left: -250px;
     width: 250px;
+    transform: none !important;
   }
 
   .sidebar-toggle-btn {
@@ -157,6 +161,7 @@
     border-radius: var(--radius-sm);
     width: 35px;
     height: 35px;
+    transition: left 0.3s ease;
   }
 
   .sidebar.collapsed .sidebar-toggle-btn {
@@ -164,7 +169,7 @@
   }
 
   .sidebar:not(.collapsed) .sidebar-toggle-btn {
-    left: 260px;
+    left: 265px;
   }
 
   .main-content {

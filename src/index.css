@@ -58,7 +58,7 @@ body {
 
 .app-container {
   display: flex !important;
-  flex-direction: row !important;
+  flex-direction: row;
   height: 100vh;
   width: 100vw;
   overflow: hidden;
@@ -288,10 +288,6 @@ p {
     font-size: 60%;
   }
   
-  .main-content {
-    padding: 1rem;
-  }
-
   .glass-panel {
     padding: 1rem;
   }
@@ -312,12 +308,6 @@ p {
     font-size: 0.9rem;
   }
 
-  /* Flex between headers might need wrap */
-  .flex-between {
-    flex-wrap: wrap;
-    gap: 1rem;
-  }
-  
   h1 {
     font-size: 2rem;
   }
