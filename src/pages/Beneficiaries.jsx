@@ -1,22 +1,52 @@
 import React, { useState, useContext } from 'react';
 import { AppContext } from '../context/AppContext';
-import { Plus, Edit2, Trash2, Camera, Clock, Check, Loader } from 'lucide-react';
+import { Plus, Edit2, Trash2, Camera, Clock, Check, Loader, X } from 'lucide-react';
 import { upload } from '@vercel/blob/client';
 
 const Beneficiaries = () => {
-  const { data, addBeneficiary, toggleBeneficiaryStatus } = useContext(AppContext);
+  const { data, addBeneficiary, updateBeneficiary, toggleBeneficiaryStatus } = useContext(AppContext);
   const [showModal, setShowModal] = useState(false);
-  const [newB, setNewB] = useState({ name: '', doc: '', email: '', phone: '', plan: 'silver', paymentMethod: 'efectivo', referente: '', foto_frente: '', foto_dorso: '' });
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [selectedUserHistory, setSelectedUserHistory] = useState(null);
+  
+  const [newB, setNewB] = useState({ id: null, name: '', doc: '', email: '', phone: '', plan: 'silver', paymentMethod: 'efectivo', referente: '', foto_frente: '', foto_dorso: '' });
   const [uploadingFrente, setUploadingFrente] = useState(false);
   const [uploadingDorso, setUploadingDorso] = useState(false);
 
-  const handleSave = () => {
-    addBeneficiary({
-      ...newB,
-      status: 'activo',
-      date: new Date().toISOString().split('T')[0]
+  const handleEdit = (b) => {
+    setNewB({
+      id: b.id,
+      name: b.name,
+      doc: b.doc,
+      email: b.email || '',
+      phone: b.phone || '',
+      plan: b.plan,
+      paymentMethod: b.paymentMethod || 'efectivo',
+      referente: b.referente || b.referredBy || '',
+      foto_frente: b.foto_frente || '',
+      foto_dorso: b.foto_dorso || ''
     });
+    setShowModal(true);
+  };
+
+  const handleSave = () => {
+    if (newB.id) {
+      updateBeneficiary(newB.id, newB);
+    } else {
+      addBeneficiary({
+        ...newB,
+        status: 'activo',
+        date: new Date().toISOString().split('T')[0]
+      });
+    }
     setShowModal(false);
+    setNewB({ id: null, name: '', doc: '', email: '', phone: '', plan: 'silver', paymentMethod: 'efectivo', referente: '', foto_frente: '', foto_dorso: '' });
+  };
+
+  const handleViewHistory = (b) => {
+    const userTxs = (data.transactions || []).filter(tx => tx.beneficiary.toLowerCase() === b.name.toLowerCase());
+    setSelectedUserHistory({ user: b, transactions: userTxs });
+    setShowHistoryModal(true);
   };
 
   const handleUploadDni = async (e, side) => {
@@ -49,7 +79,10 @@ const Beneficiaries = () => {
           <h1>Beneficiarios</h1>
           <p>Gestión de personas inscritas al club de beneficios</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+        <button className="btn btn-primary" onClick={() => {
+          setNewB({ id: null, name: '', doc: '', email: '', phone: '', plan: 'silver', paymentMethod: 'efectivo', referente: '', foto_frente: '', foto_dorso: '' });
+          setShowModal(true);
+        }}>
           <Plus size={18} />
           Nuevo Beneficiario
         </button>
@@ -98,10 +131,10 @@ const Beneficiaries = () => {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button style={{ background: 'none', border: 'none', color: 'var(--info)', cursor: 'pointer', padding: '0.25rem' }} title="Historial Transacciones">
+                        <button style={{ background: 'none', border: 'none', color: 'var(--info)', cursor: 'pointer', padding: '0.25rem' }} title="Historial Transacciones" onClick={() => handleViewHistory(b)}>
                           <Clock size={18} />
                         </button>
-                        <button style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: '0.25rem' }} title="Editar">
+                        <button style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: '0.25rem' }} title="Editar" onClick={() => handleEdit(b)}>
                           <Edit2 size={18} />
                         </button>
                         <button style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '0.25rem' }} title={b.status === 'activo' ? "Dar de baja" : "Dar de alta"} onClick={() => toggleBeneficiaryStatus(b.id)}>
@@ -178,6 +211,55 @@ const Beneficiaries = () => {
             <div className="flex-between mt-6">
               <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancelar</button>
               <button className="btn btn-primary" onClick={handleSave} disabled={uploadingFrente || uploadingDorso}>Guardar Beneficiario</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showHistoryModal && selectedUserHistory && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="flex-between mb-4">
+              <h2 style={{ margin: 0 }}>Historial: {selectedUserHistory.user.name}</h2>
+              <button style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }} onClick={() => setShowHistoryModal(false)}>
+                <X size={24} />
+              </button>
+            </div>
+            
+            {selectedUserHistory.transactions.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+                <Clock size={48} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
+                <p>No hay transacciones registradas para este beneficiario.</p>
+              </div>
+            ) : (
+              <div className="table-container" style={{ margin: 0 }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Detalle</th>
+                      <th>Método</th>
+                      <th>Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedUserHistory.transactions.slice().reverse().map(tx => (
+                      <tr key={tx.id}>
+                        <td style={{ fontSize: '0.85rem' }}>{tx.date}</td>
+                        <td>{tx.details}</td>
+                        <td style={{ textTransform: 'capitalize' }}>{tx.method}</td>
+                        <td style={{ fontWeight: 600, color: tx.type === 'ingreso' ? 'var(--success)' : 'var(--danger)' }}>
+                          {tx.type === 'ingreso' ? '+' : '-'}${Number(tx.amount).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            
+            <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
+              <button className="btn btn-outline" onClick={() => setShowHistoryModal(false)}>Cerrar</button>
             </div>
           </div>
         </div>
