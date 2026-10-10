@@ -8,8 +8,9 @@ export default async function handler(request, response) {
       body,
       request,
       onBeforeGenerateToken: async (pathname) => {
-        // You could authenticate the user here if needed
-        return {};
+        return {
+          allowedContentTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif', 'image/bmp', 'application/pdf'],
+        };
       },
       onUploadCompleted: async ({ blob }) => {
         console.log('Upload completed:', blob.url);
