@@ -61,6 +61,20 @@ export const AppProvider = ({ children }) => {
     }));
   };
 
+  const addUser = (user) => {
+    setData(prev => ({
+      ...prev,
+      users: [...prev.users, { ...user, id: Date.now() }]
+    }));
+  };
+
+  const removeUser = (id) => {
+    setData(prev => ({
+      ...prev,
+      users: prev.users.filter(u => u.id !== id)
+    }));
+  };
+
   return (
     <AppContext.Provider value={{
       data,
@@ -71,7 +85,9 @@ export const AppProvider = ({ children }) => {
       addBeneficiary,
       updateBeneficiary,
       toggleBeneficiaryStatus,
-      addTransaction
+      addTransaction,
+      addUser,
+      removeUser
     }}>
       {children}
     </AppContext.Provider>
