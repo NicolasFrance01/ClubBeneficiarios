@@ -113,7 +113,7 @@ const Login = () => {
         </div>
         
         <h2 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>Bienvenido a Atlascore</h2>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Portal exclusivo para Fundadores</p>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Portal exclusivo para Administrar Beneficiarios</p>
 
         {error && (
           <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', fontSize: '0.9rem', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
