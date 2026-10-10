@@ -4,9 +4,25 @@ import { initialData } from '../store';
 export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
-  const [data, setData] = useState(initialData);
+  const [data, setData] = useState(() => {
+    const savedData = localStorage.getItem('atlascore_data');
+    if (savedData) {
+      try {
+        return JSON.parse(savedData);
+      } catch (e) {
+        return initialData;
+      }
+    }
+    return initialData;
+  });
+  
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeUser, setActiveUser] = useState(null);
+
+  // Save data to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('atlascore_data', JSON.stringify(data));
+  }, [data]);
 
   // Simple local storage persistence for login state
   useEffect(() => {
