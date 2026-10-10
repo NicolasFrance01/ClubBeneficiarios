@@ -263,13 +263,13 @@ const Payments = () => {
                     </a>
                   )}
                   <label style={{ display: 'block', textAlign: 'center', marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                    <input type="file" style={{ display: 'none' }} accept="image/*,.pdf" onChange={handleUploadReceipt} disabled={uploadingReceipt} />
+                    <input type="file" style={{ display: 'none' }} accept="image/*,.pdf" onChange={handleUploadReceipt} onClick={(e) => (e.target.value = null)} disabled={uploadingReceipt} />
                     {uploadingReceipt ? 'Subiendo...' : 'Cambiar comprobante'}
                   </label>
                 </div>
               ) : (
                 <label style={{ border: '1px dashed var(--border-strong)', padding: '1rem', textAlign: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', background: 'rgba(0,0,0,0.2)', display: 'block' }}>
-                  <input type="file" style={{ display: 'none' }} accept="image/*,.pdf" onChange={handleUploadReceipt} disabled={uploadingReceipt} />
+                  <input type="file" style={{ display: 'none' }} accept="image/*,.pdf" onChange={handleUploadReceipt} onClick={(e) => (e.target.value = null)} disabled={uploadingReceipt} />
                   {uploadingReceipt ? <Loader className="spin" size={20} color="var(--primary)" style={{ margin: '0 auto 0.5rem' }} /> : <Paperclip size={20} color="var(--text-muted)" style={{ margin: '0 auto 0.5rem' }} />}
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block' }}>
                     Adjuntar archivo...
