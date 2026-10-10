@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { AppContext } from '../context/AppContext';
 import { ShieldCheck, Lock, Mail, ArrowRight, KeyRound } from 'lucide-react';
+import logo from '../assets/logo.png';
 
 const Login = () => {
   const { login, changePassword } = useContext(AppContext);
@@ -56,9 +57,7 @@ const Login = () => {
       <div style={{ display: 'flex', minHeight: '100vh', width: '100vw', alignItems: 'center', justifyContent: 'center' }}>
         <div className="glass-panel" style={{ width: '100%', maxWidth: '420px', padding: '3rem 2rem', textAlign: 'center' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-            <div style={{ background: 'linear-gradient(135deg, var(--info), var(--primary))', padding: '1rem', borderRadius: '50%', color: '#fff' }}>
-              <KeyRound size={40} />
-            </div>
+            <img src={logo} alt="Atlascore Logo" style={{ width: '80px', height: 'auto', objectFit: 'contain' }} />
           </div>
           
           <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Cambio de Contraseña Requerido</h2>
@@ -110,9 +109,7 @@ const Login = () => {
     <div style={{ display: 'flex', minHeight: '100vh', width: '100vw', alignItems: 'center', justifyContent: 'center' }}>
       <div className="glass-panel" style={{ width: '100%', maxWidth: '420px', padding: '3rem 2rem', textAlign: 'center' }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-          <div style={{ background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))', padding: '1rem', borderRadius: '50%', color: '#000' }}>
-            <ShieldCheck size={40} />
-          </div>
+          <img src={logo} alt="Atlascore Logo" style={{ width: '120px', height: 'auto', objectFit: 'contain' }} />
         </div>
         
         <h2 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>Bienvenido a Atlascore</h2>
