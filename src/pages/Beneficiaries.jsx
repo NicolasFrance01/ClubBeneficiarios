@@ -66,7 +66,7 @@ const Beneficiaries = () => {
       setNewB(prev => ({ ...prev, [side === 'frente' ? 'foto_frente' : 'foto_dorso']: newBlob.url }));
     } catch (error) {
       console.error("Error al subir archivo:", error);
-      alert("Error al subir la imagen. Por favor intenta de nuevo.");
+      alert("Error al subir la imagen: " + (error.message || error));
     } finally {
       if (side === 'frente') setUploadingFrente(false);
       else setUploadingDorso(false);

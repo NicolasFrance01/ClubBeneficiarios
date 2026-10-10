@@ -44,7 +44,7 @@ const Payments = () => {
       setNewTx(prev => ({ ...prev, comprobante_url: newBlob.url }));
     } catch (error) {
       console.error("Error subiendo comprobante:", error);
-      alert("No se pudo subir el comprobante. Intenta de nuevo.");
+      alert("No se pudo subir el comprobante: " + (error.message || error));
     } finally {
       setUploadingReceipt(false);
     }
