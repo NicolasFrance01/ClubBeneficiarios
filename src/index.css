@@ -281,3 +281,44 @@ p {
 .spin {
   animation: spin 1s linear infinite;
 }
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  html {
+    font-size: 60%;
+  }
+  
+  .main-content {
+    padding: 1rem;
+  }
+
+  .glass-panel {
+    padding: 1rem;
+  }
+
+  /* Target inline grid styles and force them to stack on mobile */
+  div[style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Tables need to scroll on mobile */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .data-table th, .data-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  /* Flex between headers might need wrap */
+  .flex-between {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  
+  h1 {
+    font-size: 2rem;
+  }
+}
