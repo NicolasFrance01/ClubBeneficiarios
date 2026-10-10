@@ -54,7 +54,15 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {data.beneficiaries.filter(b => b.status === 'activo').slice(0, 3).map(b => {
+                {data.beneficiaries.filter(b => {
+                  if (b.status !== 'activo') return false;
+                  // Check if there is already a payment this month
+                  const currentMonth = new Date().toISOString().slice(0, 7); // e.g., "2026-10"
+                  const hasPaid = (data.transactions || []).some(tx => 
+                    tx.beneficiary === b.name && tx.date.startsWith(currentMonth) && tx.type === 'ingreso'
+                  );
+                  return !hasPaid;
+                }).slice(0, 5).map(b => {
                   const plan = data.plans.find(p => p.id === b.plan);
                   const finalPrice = calculateFinalPrice(plan.basePrice, b.paymentMethod, data.commission, data.iva);
                   return (

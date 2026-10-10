@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
 import { calculateFinalPrice, calculateFitnessGroupCut } from '../store';
-import { ArrowUpRight, ArrowDownRight, Briefcase, Landmark, Plus, Paperclip, Loader } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Briefcase, Landmark, Plus, Paperclip, Loader, Search } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { upload } from '@vercel/blob/client';
 
@@ -9,6 +9,7 @@ const Payments = () => {
   const { data, addTransaction } = useContext(AppContext);
   const location = useLocation();
   const [showModal, setShowModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const [newTx, setNewTx] = useState({ 
     beneficiary: '', amount: '', type: 'ingreso', method: 'transferencia', details: 'Cuota Mensual', ref: '', comprobante_url: ''
   });
@@ -84,6 +85,12 @@ const Payments = () => {
     }
   });
 
+  const filteredHistory = paymentHistory.filter(tx => 
+    tx.beneficiary.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    tx.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (tx.ref && tx.ref.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
   return (
     <div className="payments-page">
       <div className="flex-between mb-6">
@@ -139,7 +146,22 @@ const Payments = () => {
       </div>
 
       <div className="glass-panel">
-        <h3 className="mb-4">Historial de Transacciones</h3>
+        <div className="flex-between mb-4">
+          <h3 style={{ margin: 0 }}>Historial de Transacciones</h3>
+          <div className="input-group" style={{ margin: 0, width: '300px' }}>
+            <div style={{ position: 'relative' }}>
+              <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+              <input 
+                type="text" 
+                className="input-field" 
+                placeholder="Buscar por nombre, detalle o ref..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ paddingLeft: '32px' }}
+              />
+            </div>
+          </div>
+        </div>
         <div className="table-container">
           <table className="data-table">
             <thead>
@@ -153,7 +175,7 @@ const Payments = () => {
               </tr>
             </thead>
             <tbody>
-              {paymentHistory.slice().reverse().map(tx => (
+              {filteredHistory.slice().reverse().map(tx => (
                 <tr key={tx.id}>
                   <td style={{ fontSize: '0.9rem' }}>{tx.date}</td>
                   <td>

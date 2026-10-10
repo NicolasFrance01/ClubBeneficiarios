@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { AppContext } from '../context/AppContext';
-import { Plus, Edit2, Trash2, Camera, Clock, Check, Loader, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, Camera, Clock, Check, Loader, X, Search } from 'lucide-react';
 import { upload } from '@vercel/blob/client';
 
 const Beneficiaries = () => {
@@ -8,6 +8,7 @@ const Beneficiaries = () => {
   const [showModal, setShowModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedUserHistory, setSelectedUserHistory] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
   
   const [newB, setNewB] = useState({ id: null, name: '', doc: '', email: '', phone: '', plan: 'silver', paymentMethod: 'efectivo', referente: '', foto_frente: '', foto_dorso: '' });
   const [uploadingFrente, setUploadingFrente] = useState(false);
@@ -72,6 +73,12 @@ const Beneficiaries = () => {
     }
   };
 
+  const filteredBeneficiaries = data.beneficiaries.filter(b => 
+    b.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    b.doc.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (b.email && b.email.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
   return (
     <div className="beneficiaries-page">
       <div className="flex-between mb-6">
@@ -79,13 +86,28 @@ const Beneficiaries = () => {
           <h1>Beneficiarios</h1>
           <p>Gestión de personas inscritas al club de beneficios</p>
         </div>
-        <button className="btn btn-primary" onClick={() => {
-          setNewB({ id: null, name: '', doc: '', email: '', phone: '', plan: 'silver', paymentMethod: 'efectivo', referente: '', foto_frente: '', foto_dorso: '' });
-          setShowModal(true);
-        }}>
-          <Plus size={18} />
-          Nuevo Beneficiario
-        </button>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div className="input-group" style={{ margin: 0, width: '250px' }}>
+            <div style={{ position: 'relative' }}>
+              <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+              <input 
+                type="text" 
+                className="input-field" 
+                placeholder="Buscar por nombre, DNI o email..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ paddingLeft: '32px' }}
+              />
+            </div>
+          </div>
+          <button className="btn btn-primary" onClick={() => {
+            setNewB({ id: null, name: '', doc: '', email: '', phone: '', plan: 'silver', paymentMethod: 'efectivo', referente: '', foto_frente: '', foto_dorso: '' });
+            setShowModal(true);
+          }}>
+            <Plus size={18} />
+            Nuevo
+          </button>
+        </div>
       </div>
 
       <div className="glass-panel">
@@ -102,7 +124,7 @@ const Beneficiaries = () => {
               </tr>
             </thead>
             <tbody>
-              {data.beneficiaries.map(b => {
+              {filteredBeneficiaries.map(b => {
                 const plan = data.plans.find(p => p.id === b.plan) || { name: b.plan, id: b.plan };
                 return (
                   <tr key={b.id} style={{ opacity: b.status === 'inactivo' ? 0.5 : 1 }}>
