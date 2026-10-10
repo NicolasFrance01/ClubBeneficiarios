@@ -127,7 +127,7 @@ const Login = () => {
             <input 
               type="email" 
               className="input-field" 
-              placeholder="master@atlascore.com" 
+              placeholder="correo@ejemplo.com" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               style={{ width: '100%' }}
