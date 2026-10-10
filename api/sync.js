@@ -1,11 +1,12 @@
 import { getDb } from './db.js';
+import bcrypt from 'bcryptjs';
 
 export default async function handler(req, res) {
   const pool = getDb();
 
   try {
     if (req.method === 'GET') {
-      const users = await pool.query('SELECT * FROM users ORDER BY id ASC');
+      const users = await pool.query('SELECT id, name, role, email, needs_password_change FROM users ORDER BY id ASC');
       const beneficiaries = await pool.query('SELECT * FROM beneficiaries ORDER BY id ASC');
       const transactions = await pool.query('SELECT * FROM transactions ORDER BY date DESC');
 
@@ -19,18 +20,45 @@ export default async function handler(req, res) {
 
       if (action === 'ADD_USER') {
         const { name, role, email, password, needsPasswordChange } = payload;
+        const hashedPassword = await bcrypt.hash(password, 10);
         const result = await pool.query(
-          'INSERT INTO users (name, role, email, password, needs_password_change) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-          [name, role, email, password, needsPasswordChange]
+          'INSERT INTO users (name, role, email, password, needs_password_change) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, role, email, needs_password_change',
+          [name, role, email, hashedPassword, needsPasswordChange]
         );
         res.status(200).json(result.rows[0]);
       } 
       else if (action === 'UPDATE_USER') {
-        const { id, ...fields } = payload;
-        const updates = Object.keys(fields).map((k, i) => `${k === 'needsPasswordChange' ? 'needs_password_change' : k} = $${i + 2}`).join(', ');
-        const values = Object.values(fields);
-        const result = await pool.query(`UPDATE users SET ${updates} WHERE id = $1 RETURNING *`, [id, ...values]);
-        res.status(200).json(result.rows[0]);
+        const { id, password, ...fields } = payload;
+        
+        // Map fields and handle optional password
+        const dbFields = {};
+        for (let key in fields) {
+          if (key === 'needsPasswordChange') dbFields['needs_password_change'] = fields[key];
+          else dbFields[key] = fields[key];
+        }
+
+        let updates = [];
+        let values = [id];
+        let paramIndex = 2;
+
+        for (let key in dbFields) {
+          updates.push(`${key} = $${paramIndex}`);
+          values.push(dbFields[key]);
+          paramIndex++;
+        }
+
+        if (password) {
+          const hashedPassword = await bcrypt.hash(password, 10);
+          updates.push(`password = $${paramIndex}`);
+          values.push(hashedPassword);
+        }
+
+        if (updates.length > 0) {
+          const result = await pool.query(`UPDATE users SET ${updates.join(', ')} WHERE id = $1 RETURNING id, name, role, email, needs_password_change`, values);
+          res.status(200).json(result.rows[0]);
+        } else {
+          res.status(200).json({ success: true, message: 'No fields to update' });
+        }
       }
       else if (action === 'DELETE_USER') {
         await pool.query('DELETE FROM users WHERE id = $1', [payload.id]);

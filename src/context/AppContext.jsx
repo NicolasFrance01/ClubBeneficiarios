@@ -74,19 +74,32 @@ export const AppProvider = ({ children }) => {
     }
   }, [isLoading, data.users]);
 
-  const login = (email, password) => {
-    const user = data.users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
-    if (user) {
-      if (user.needsPasswordChange) {
-        return { requireChange: true, user };
+  const login = async (email, password) => {
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        if (data.user.needsPasswordChange) {
+          return { requireChange: true, user: data.user };
+        }
+        setIsAuthenticated(true);
+        setActiveUser(data.user);
+        localStorage.setItem('atlascore_auth_v2', 'true');
+        localStorage.setItem('atlascore_user_id_v2', data.user.id);
+        return { success: true, user: data.user };
+      } else {
+        return { success: false, error: data.error || 'Credenciales incorrectas' };
       }
-      setIsAuthenticated(true);
-      setActiveUser(user);
-      localStorage.setItem('atlascore_auth_v2', 'true');
-      localStorage.setItem('atlascore_user_id_v2', user.id);
-      return { success: true, user };
+    } catch (e) {
+      console.error('Login error', e);
+      return { success: false, error: 'Error de red' };
     }
-    return { success: false, error: 'Credenciales incorrectas' };
   };
 
   const changePassword = (userId, newPassword) => {

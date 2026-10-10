@@ -14,11 +14,14 @@ const Login = () => {
   const [pendingUser, setPendingUser] = useState(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (email && password) {
-      const result = login(email, password);
+      setIsSubmitting(true);
+      const result = await login(email, password);
+      setIsSubmitting(false);
       if (result.success) {
         // Logged in successfully
         setError('');
