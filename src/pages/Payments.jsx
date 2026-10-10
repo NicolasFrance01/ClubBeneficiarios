@@ -229,13 +229,31 @@ const Payments = () => {
 
             <div className="input-group mb-6">
               <label>Comprobante / Captura (Opcional)</label>
-              <label style={{ border: '1px dashed var(--border-strong)', padding: '1rem', textAlign: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', background: 'rgba(0,0,0,0.2)' }}>
-                <input type="file" style={{ display: 'none' }} accept="image/*,.pdf" onChange={handleUploadReceipt} disabled={uploadingReceipt} />
-                {uploadingReceipt ? <Loader className="spin" size={20} color="var(--primary)" style={{ margin: '0 auto 0.5rem' }} /> : <Paperclip size={20} color="var(--text-muted)" style={{ margin: '0 auto 0.5rem' }} />}
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block' }}>
-                  {newTx.comprobante_url ? 'Archivo adjuntado correctamente (Clic para cambiar)' : 'Adjuntar archivo...'}
-                </span>
-              </label>
+              {newTx.comprobante_url ? (
+                <div style={{ position: 'relative', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)', padding: '0.5rem', background: 'rgba(0,0,0,0.2)' }}>
+                  {newTx.comprobante_url.toLowerCase().endsWith('.pdf') ? (
+                    <a href={newTx.comprobante_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)', padding: '1rem', justifyContent: 'center' }}>
+                      <Paperclip size={24} /> Ver Archivo PDF Adjunto
+                    </a>
+                  ) : (
+                    <a href={newTx.comprobante_url} target="_blank" rel="noreferrer">
+                      <img src={newTx.comprobante_url} alt="Comprobante" style={{ width: '100%', maxHeight: '150px', objectFit: 'contain', borderRadius: '4px' }} />
+                    </a>
+                  )}
+                  <label style={{ display: 'block', textAlign: 'center', marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                    <input type="file" style={{ display: 'none' }} accept="image/*,.pdf" onChange={handleUploadReceipt} disabled={uploadingReceipt} />
+                    {uploadingReceipt ? 'Subiendo...' : 'Cambiar comprobante'}
+                  </label>
+                </div>
+              ) : (
+                <label style={{ border: '1px dashed var(--border-strong)', padding: '1rem', textAlign: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', background: 'rgba(0,0,0,0.2)', display: 'block' }}>
+                  <input type="file" style={{ display: 'none' }} accept="image/*,.pdf" onChange={handleUploadReceipt} disabled={uploadingReceipt} />
+                  {uploadingReceipt ? <Loader className="spin" size={20} color="var(--primary)" style={{ margin: '0 auto 0.5rem' }} /> : <Paperclip size={20} color="var(--text-muted)" style={{ margin: '0 auto 0.5rem' }} />}
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block' }}>
+                    Adjuntar archivo...
+                  </span>
+                </label>
+              )}
             </div>
 
             <div className="flex-between">
