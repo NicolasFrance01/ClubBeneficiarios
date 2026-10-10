@@ -127,6 +127,13 @@ export const AppProvider = ({ children }) => {
     }));
   };
 
+  const removeBeneficiary = (id) => {
+    setData(prev => ({
+      ...prev,
+      beneficiaries: prev.beneficiaries.filter(b => b.id !== id)
+    }));
+  };
+
   return (
     <AppContext.Provider value={{
       data,
@@ -139,6 +146,7 @@ export const AppProvider = ({ children }) => {
       addBeneficiary,
       updateBeneficiary,
       toggleBeneficiaryStatus,
+      removeBeneficiary,
       addTransaction,
       addUser,
       updateUser,

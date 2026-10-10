@@ -1,10 +1,10 @@
 import React, { useState, useContext } from 'react';
 import { AppContext } from '../context/AppContext';
-import { Plus, Edit2, Trash2, Camera, Clock, Check, Loader, X, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, Camera, Clock, Check, Loader, X, Search, ArrowDown, ArrowUp } from 'lucide-react';
 import { upload } from '@vercel/blob/client';
 
 const Beneficiaries = () => {
-  const { data, addBeneficiary, updateBeneficiary, toggleBeneficiaryStatus } = useContext(AppContext);
+  const { data, addBeneficiary, updateBeneficiary, toggleBeneficiaryStatus, removeBeneficiary } = useContext(AppContext);
   const [showModal, setShowModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedUserHistory, setSelectedUserHistory] = useState(null);
@@ -159,8 +159,23 @@ const Beneficiaries = () => {
                         <button style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: '0.25rem' }} title="Editar" onClick={() => handleEdit(b)}>
                           <Edit2 size={18} />
                         </button>
-                        <button style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '0.25rem' }} title={b.status === 'activo' ? "Dar de baja" : "Dar de alta"} onClick={() => toggleBeneficiaryStatus(b.id)}>
-                          {b.status === 'activo' ? <Trash2 size={18} /> : <Check size={18} />}
+                        <button 
+                          style={{ background: 'none', border: 'none', color: b.status === 'activo' ? 'var(--danger)' : 'var(--success)', cursor: 'pointer', padding: '0.25rem' }} 
+                          title={b.status === 'activo' ? "Dar de baja" : "Dar de alta"} 
+                          onClick={() => toggleBeneficiaryStatus(b.id)}
+                        >
+                          {b.status === 'activo' ? <ArrowDown size={18} /> : <ArrowUp size={18} />}
+                        </button>
+                        <button 
+                          style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '0.25rem' }} 
+                          title="Eliminar Beneficiario" 
+                          onClick={() => {
+                            if(window.confirm('¿Estás seguro de eliminar este beneficiario por completo?')) {
+                              removeBeneficiary(b.id);
+                            }
+                          }}
+                        >
+                          <Trash2 size={18} />
                         </button>
                       </div>
                     </td>
