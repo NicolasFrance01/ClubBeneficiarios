@@ -1,16 +1,18 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
 import { calculateFinalPrice, calculateFitnessGroupCut } from '../store';
-import { ArrowUpRight, ArrowDownRight, Briefcase, Landmark, Plus } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Briefcase, Landmark, Plus, Paperclip, Loader } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import { upload } from '@vercel/blob/client';
 
 const Payments = () => {
   const { data, addTransaction } = useContext(AppContext);
   const location = useLocation();
   const [showModal, setShowModal] = useState(false);
   const [newTx, setNewTx] = useState({ 
-    beneficiary: '', amount: '', type: 'ingreso', method: 'transferencia', details: 'Cuota Mensual', ref: ''
+    beneficiary: '', amount: '', type: 'ingreso', method: 'transferencia', details: 'Cuota Mensual', ref: '', comprobante_url: ''
   });
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
 
   useEffect(() => {
     if (location.state?.prefill) {
@@ -28,17 +30,37 @@ const Payments = () => {
     }
   }, [location.state]);
 
+  const handleUploadReceipt = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingReceipt(true);
+    try {
+      const newBlob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/upload',
+      });
+      setNewTx(prev => ({ ...prev, comprobante_url: newBlob.url }));
+    } catch (error) {
+      console.error("Error subiendo comprobante:", error);
+      alert("No se pudo subir el comprobante. Intenta de nuevo.");
+    } finally {
+      setUploadingReceipt(false);
+    }
+  };
+
   const handleSaveTx = () => {
     addTransaction({
       ...newTx,
       date: new Date().toISOString().replace('T', ' ').slice(0, 16)
     });
     setShowModal(false);
+    setNewTx({ beneficiary: '', amount: '', type: 'ingreso', method: 'transferencia', details: 'Cuota Mensual', ref: '', comprobante_url: '' });
   };
 
   const paymentHistory = data.transactions || [
-    { id: 101, date: '2026-10-09 10:30', amount: 65000, type: 'ingreso', method: 'transferencia', beneficiary: 'Maria Gomez', details: 'Cuota Octubre', ref: 'TRX-9921' },
-    { id: 102, date: '2026-10-08 15:45', amount: 34000, type: 'ingreso', method: 'efectivo', beneficiary: 'Juan Perez', details: 'Cuota Octubre', ref: 'REC-0012' }
+    { id: 101, date: '2026-10-09 10:30', amount: 65000, type: 'ingreso', method: 'transferencia', beneficiary: 'Maria Gomez', details: 'Cuota Octubre', ref: 'TRX-9921', comprobante_url: '' },
+    { id: 102, date: '2026-10-08 15:45', amount: 34000, type: 'ingreso', method: 'efectivo', beneficiary: 'Juan Perez', details: 'Cuota Octubre', ref: 'REC-0012', comprobante_url: '' }
   ];
 
   let totalTransferencia = 0;
@@ -144,9 +166,16 @@ const Payments = () => {
                   <td>{tx.beneficiary}</td>
                   <td>
                     <span style={{ display: 'block' }}>{tx.details}</span>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Ref: {tx.ref || '-'}</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      Ref: {tx.ref || '-'}
+                      {tx.comprobante_url && (
+                        <a href={tx.comprobante_url} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <Paperclip size={12} /> Ver adjunto
+                        </a>
+                      )}
+                    </span>
                   </td>
-                  <td style={{ fontWeight: 600 }}>${tx.amount.toLocaleString()}</td>
+                  <td style={{ fontWeight: 600 }}>${Number(tx.amount).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
@@ -193,14 +222,25 @@ const Payments = () => {
               </div>
             </div>
 
-            <div className="input-group mb-6">
+            <div className="input-group mb-4">
               <label>Detalle</label>
               <input type="text" className="input-field" value={newTx.details} onChange={e => setNewTx({...newTx, details: e.target.value})} />
             </div>
 
+            <div className="input-group mb-6">
+              <label>Comprobante / Captura (Opcional)</label>
+              <label style={{ border: '1px dashed var(--border-strong)', padding: '1rem', textAlign: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', background: 'rgba(0,0,0,0.2)' }}>
+                <input type="file" style={{ display: 'none' }} accept="image/*,.pdf" onChange={handleUploadReceipt} disabled={uploadingReceipt} />
+                {uploadingReceipt ? <Loader className="spin" size={20} color="var(--primary)" style={{ margin: '0 auto 0.5rem' }} /> : <Paperclip size={20} color="var(--text-muted)" style={{ margin: '0 auto 0.5rem' }} />}
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block' }}>
+                  {newTx.comprobante_url ? 'Archivo adjuntado correctamente (Clic para cambiar)' : 'Adjuntar archivo...'}
+                </span>
+              </label>
+            </div>
+
             <div className="flex-between">
               <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={handleSaveTx}>Guardar</button>
+              <button className="btn btn-primary" onClick={handleSaveTx} disabled={uploadingReceipt}>Guardar</button>
             </div>
           </div>
         </div>

@@ -1,11 +1,14 @@
 import React, { useState, useContext } from 'react';
 import { AppContext } from '../context/AppContext';
-import { Plus, Edit2, Trash2, Camera, Clock, Check } from 'lucide-react';
+import { Plus, Edit2, Trash2, Camera, Clock, Check, Loader } from 'lucide-react';
+import { upload } from '@vercel/blob/client';
 
 const Beneficiaries = () => {
   const { data, addBeneficiary, toggleBeneficiaryStatus } = useContext(AppContext);
   const [showModal, setShowModal] = useState(false);
-  const [newB, setNewB] = useState({ name: '', doc: '', email: '', phone: '', plan: 'silver', paymentMethod: 'efectivo', referente: '' });
+  const [newB, setNewB] = useState({ name: '', doc: '', email: '', phone: '', plan: 'silver', paymentMethod: 'efectivo', referente: '', foto_frente: '', foto_dorso: '' });
+  const [uploadingFrente, setUploadingFrente] = useState(false);
+  const [uploadingDorso, setUploadingDorso] = useState(false);
 
   const handleSave = () => {
     addBeneficiary({
@@ -14,6 +17,29 @@ const Beneficiaries = () => {
       date: new Date().toISOString().split('T')[0]
     });
     setShowModal(false);
+  };
+
+  const handleUploadDni = async (e, side) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (side === 'frente') setUploadingFrente(true);
+    else setUploadingDorso(true);
+
+    try {
+      const newBlob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/upload',
+      });
+      
+      setNewB(prev => ({ ...prev, [side === 'frente' ? 'foto_frente' : 'foto_dorso']: newBlob.url }));
+    } catch (error) {
+      console.error("Error al subir archivo:", error);
+      alert("Error al subir la imagen. Por favor intenta de nuevo.");
+    } finally {
+      if (side === 'frente') setUploadingFrente(false);
+      else setUploadingDorso(false);
+    }
   };
 
   return (
@@ -134,22 +160,24 @@ const Beneficiaries = () => {
 
               <div className="input-group">
                 <label>Foto DNI Frente</label>
-                <div style={{ border: '1px dashed var(--border-strong)', padding: '2rem', textAlign: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', background: 'rgba(0,0,0,0.2)' }}>
-                  <Camera size={24} color="var(--text-muted)" style={{ margin: '0 auto 0.5rem' }} />
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Subir imagen</span>
-                </div>
+                <label style={{ border: '1px dashed var(--border-strong)', padding: '1rem', textAlign: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', background: 'rgba(0,0,0,0.2)' }}>
+                  <input type="file" style={{ display: 'none' }} accept="image/*" onChange={(e) => handleUploadDni(e, 'frente')} disabled={uploadingFrente} />
+                  {uploadingFrente ? <Loader className="spin" size={24} color="var(--primary)" style={{ margin: '0 auto 0.5rem' }} /> : newB.foto_frente ? <img src={newB.foto_frente} alt="DNI Frente" style={{ maxWidth: '100%', maxHeight: '60px', objectFit: 'contain' }} /> : <Camera size={24} color="var(--text-muted)" style={{ margin: '0 auto 0.5rem' }} />}
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block' }}>{newB.foto_frente ? 'Cambiar imagen' : 'Subir DNI Frente'}</span>
+                </label>
               </div>
               <div className="input-group">
                 <label>Foto DNI Dorso</label>
-                <div style={{ border: '1px dashed var(--border-strong)', padding: '2rem', textAlign: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', background: 'rgba(0,0,0,0.2)' }}>
-                  <Camera size={24} color="var(--text-muted)" style={{ margin: '0 auto 0.5rem' }} />
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Subir imagen</span>
-                </div>
+                <label style={{ border: '1px dashed var(--border-strong)', padding: '1rem', textAlign: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', background: 'rgba(0,0,0,0.2)' }}>
+                  <input type="file" style={{ display: 'none' }} accept="image/*" onChange={(e) => handleUploadDni(e, 'dorso')} disabled={uploadingDorso} />
+                  {uploadingDorso ? <Loader className="spin" size={24} color="var(--primary)" style={{ margin: '0 auto 0.5rem' }} /> : newB.foto_dorso ? <img src={newB.foto_dorso} alt="DNI Dorso" style={{ maxWidth: '100%', maxHeight: '60px', objectFit: 'contain' }} /> : <Camera size={24} color="var(--text-muted)" style={{ margin: '0 auto 0.5rem' }} />}
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block' }}>{newB.foto_dorso ? 'Cambiar imagen' : 'Subir DNI Dorso'}</span>
+                </label>
               </div>
             </div>
             <div className="flex-between mt-6">
               <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={handleSave}>Guardar Beneficiario</button>
+              <button className="btn btn-primary" onClick={handleSave} disabled={uploadingFrente || uploadingDorso}>Guardar Beneficiario</button>
             </div>
           </div>
         </div>
