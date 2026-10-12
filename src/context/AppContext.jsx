@@ -161,7 +161,7 @@ export const AppProvider = ({ children }) => {
       ...prev,
       beneficiaries: prev.beneficiaries.map(b => b.id === id ? { ...b, ...updatedFields } : b)
     }));
-    syncAction('UPDATE_BENEFICIARY', { id, ...updatedFields });
+    syncAction('UPDATE_BENEFICIARY', { id, ...updatedFields }).then(() => fetchDb());
   };
 
   const toggleBeneficiaryStatus = (id) => {
@@ -175,7 +175,7 @@ export const AppProvider = ({ children }) => {
         b.id === id ? { ...b, status: newStatus } : b
       )
     }));
-    syncAction('UPDATE_BENEFICIARY', { id, status: newStatus });
+    syncAction('UPDATE_BENEFICIARY', { id, status: newStatus }).then(() => fetchDb());
   };
 
   const removeBeneficiary = (id) => {

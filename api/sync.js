@@ -69,22 +69,44 @@ export default async function handler(req, res) {
         res.status(200).json({ success: true });
       }
       else if (action === 'ADD_BENEFICIARY') {
-        const { name, doc, email, phone, plan, paymentMethod, status, referredBy, foto_frente, foto_dorso, date } = payload;
+        const { name, doc, email, phone, plan, paymentMethod, status, referredBy, referente, foto_frente, foto_dorso, date } = payload;
+        const finalReferred = (referredBy || referente || '').trim() || null;
         const result = await pool.query(
           'INSERT INTO beneficiaries (name, doc, email, phone, plan, payment_method, status, referred_by, foto_frente, foto_dorso, date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
-          [name, doc, email, phone, plan, paymentMethod, status, referredBy, foto_frente, foto_dorso, date]
+          [name, doc, email, phone, plan, paymentMethod, status, finalReferred, foto_frente, foto_dorso, date]
         );
         res.status(200).json(result.rows[0]);
       }
       else if (action === 'UPDATE_BENEFICIARY') {
         const { id, ...fields } = payload;
         
-        // Map JS camelCase fields to DB snake_case
+        const allowedColumns = {
+          name: 'name',
+          doc: 'doc',
+          email: 'email',
+          phone: 'phone',
+          plan: 'plan',
+          paymentMethod: 'payment_method',
+          payment_method: 'payment_method',
+          status: 'status',
+          referredBy: 'referred_by',
+          referente: 'referred_by',
+          referred_by: 'referred_by',
+          foto_frente: 'foto_frente',
+          foto_dorso: 'foto_dorso',
+          date: 'date'
+        };
+
         const dbFields = {};
         for(let key in fields) {
-          if(key === 'paymentMethod') dbFields['payment_method'] = fields[key];
-          else if(key === 'referredBy') dbFields['referred_by'] = fields[key];
-          else dbFields[key] = fields[key];
+          if (allowedColumns[key]) {
+            const col = allowedColumns[key];
+            if (col === 'referred_by') {
+              dbFields[col] = (fields[key] || '').trim() || null;
+            } else {
+              dbFields[col] = fields[key];
+            }
+          }
         }
 
         const updates = Object.keys(dbFields).map((k, i) => `${k} = $${i + 2}`).join(', ');

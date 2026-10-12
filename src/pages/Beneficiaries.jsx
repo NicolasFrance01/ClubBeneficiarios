@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { AppContext } from '../context/AppContext';
-import { Plus, Edit2, Trash2, Camera, Clock, Check, Loader, X, Search, ArrowDown, ArrowUp } from 'lucide-react';
+import { Plus, Edit2, Trash2, Camera, Clock, Check, Loader, X, Search, ArrowDown, ArrowUp, ChevronDown, UserCheck } from 'lucide-react';
 import { upload } from '@vercel/blob/client';
 
 const Beneficiaries = () => {
@@ -9,10 +9,20 @@ const Beneficiaries = () => {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedUserHistory, setSelectedUserHistory] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showReferenteList, setShowReferenteList] = useState(false);
   
   const [newB, setNewB] = useState({ id: null, name: '', doc: '', email: '', phone: '', plan: 'silver', paymentMethod: 'efectivo', referente: '', foto_frente: '', foto_dorso: '' });
   const [uploadingFrente, setUploadingFrente] = useState(false);
   const [uploadingDorso, setUploadingDorso] = useState(false);
+
+  const allReferentNames = Array.from(new Set([
+    ...(data.referents || []).map(r => r.name),
+    ...data.beneficiaries.map(b => b.referente || b.referredBy || b.referred_by)
+  ].filter(Boolean)));
+
+  const matchingReferents = allReferentNames.filter(r => 
+    !newB.referente || r.toLowerCase().includes(newB.referente.toLowerCase())
+  );
 
   const handleEdit = (b) => {
     setNewB({
@@ -23,10 +33,11 @@ const Beneficiaries = () => {
       phone: b.phone || '',
       plan: b.plan,
       paymentMethod: b.paymentMethod || 'efectivo',
-      referente: b.referente || b.referredBy || '',
+      referente: b.referente || b.referredBy || b.referred_by || '',
       foto_frente: b.foto_frente || '',
       foto_dorso: b.foto_dorso || ''
     });
+    setShowReferenteList(false);
     setShowModal(true);
   };
 
@@ -44,16 +55,23 @@ const Beneficiaries = () => {
       }
     }
 
+    const finalBeneficiaryPayload = {
+      ...newB,
+      referente: refName,
+      referredBy: refName
+    };
+
     if (newB.id) {
-      updateBeneficiary(newB.id, newB);
+      updateBeneficiary(newB.id, finalBeneficiaryPayload);
     } else {
       addBeneficiary({
-        ...newB,
+        ...finalBeneficiaryPayload,
         status: 'activo',
         date: new Date().toISOString().split('T')[0]
       });
     }
     setShowModal(false);
+    setShowReferenteList(false);
     setNewB({ id: null, name: '', doc: '', email: '', phone: '', plan: 'silver', paymentMethod: 'efectivo', referente: '', foto_frente: '', foto_dorso: '' });
   };
 
@@ -238,17 +256,140 @@ const Beneficiaries = () => {
                 </select>
               </div>
               
-              <div className="input-group" style={{ gridColumn: '1 / -1' }}>
-                <label>Ingresado Por (Referente)</label>
-                <input type="text" list="referentes-list" className="input-field" value={newB.referente} onChange={e => setNewB({...newB, referente: e.target.value})} placeholder="Ej. Nicolas" />
-                <datalist id="referentes-list">
-                  {Array.from(new Set([
-                    ...(data.referents || []).map(r => r.name),
-                    ...data.beneficiaries.map(b => b.referente || b.referredBy)
-                  ].filter(Boolean))).map(ref => (
-                    <option key={ref} value={ref} />
-                  ))}
-                </datalist>
+              <div className="input-group" style={{ gridColumn: '1 / -1', position: 'relative' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <label style={{ margin: 0 }}>Ingresado Por (Referente)</label>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Elige de la lista o escribe uno nuevo</span>
+                </div>
+
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="text" 
+                    className="input-field" 
+                    value={newB.referente} 
+                    onChange={e => {
+                      setNewB({...newB, referente: e.target.value});
+                      setShowReferenteList(true);
+                    }} 
+                    onFocus={() => setShowReferenteList(true)}
+                    placeholder="Haz clic para ver la lista o escribe para buscar..." 
+                    style={{ paddingRight: '2.5rem' }}
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowReferenteList(!showReferenteList)}
+                    style={{ 
+                      position: 'absolute', 
+                      right: '8px', 
+                      top: '50%', 
+                      transform: 'translateY(-50%)', 
+                      background: 'none', 
+                      border: 'none', 
+                      color: 'var(--primary)', 
+                      cursor: 'pointer',
+                      padding: '0.25rem',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                    title="Desplegar lista de referentes"
+                  >
+                    <ChevronDown size={18} style={{ transform: showReferenteList ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                  </button>
+                </div>
+
+                {showReferenteList && (
+                  <>
+                    <div 
+                      style={{ position: 'fixed', inset: 0, zIndex: 40 }} 
+                      onClick={() => setShowReferenteList(false)} 
+                    />
+                    <div 
+                      style={{ 
+                        position: 'absolute', 
+                        top: '100%', 
+                        left: 0, 
+                        right: 0, 
+                        zIndex: 50, 
+                        marginTop: '4px',
+                        maxHeight: '220px', 
+                        overflowY: 'auto', 
+                        padding: '0.4rem',
+                        boxShadow: '0 12px 30px rgba(0,0,0,0.6)',
+                        border: '1px solid rgba(0, 242, 254, 0.3)',
+                        borderRadius: 'var(--radius-sm)',
+                        background: '#0d131f'
+                      }}
+                    >
+                      <div 
+                        onClick={() => {
+                          setNewB({ ...newB, referente: '' });
+                          setShowReferenteList(false);
+                        }}
+                        style={{ 
+                          padding: '0.45rem 0.65rem', 
+                          cursor: 'pointer', 
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.85rem',
+                          color: 'var(--text-muted)'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        (Sin referente / Ninguno)
+                      </div>
+
+                      {matchingReferents.map(refName => (
+                        <div 
+                          key={refName}
+                          onClick={() => {
+                            setNewB({ ...newB, referente: refName });
+                            setShowReferenteList(false);
+                          }}
+                          style={{ 
+                            padding: '0.5rem 0.65rem', 
+                            cursor: 'pointer', 
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: '0.9rem',
+                            color: 'var(--text-main)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 242, 254, 0.12)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <UserCheck size={16} color="var(--primary)" />
+                            <strong>{refName}</strong>
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Referente</span>
+                        </div>
+                      ))}
+
+                      {newB.referente.trim() && !matchingReferents.some(r => r.toLowerCase() === newB.referente.trim().toLowerCase()) && (
+                        <div 
+                          onClick={() => setShowReferenteList(false)}
+                          style={{ 
+                            padding: '0.55rem 0.65rem', 
+                            cursor: 'pointer', 
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: '0.85rem',
+                            color: 'var(--primary)',
+                            background: 'rgba(0, 242, 254, 0.08)',
+                            borderTop: '1px solid rgba(255,255,255,0.08)',
+                            marginTop: '0.25rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.4rem'
+                          }}
+                        >
+                          <Plus size={14} />
+                          <span>Usar nuevo referente: <strong>"{newB.referente.trim()}"</strong></span>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="input-group">
