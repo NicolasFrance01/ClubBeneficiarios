@@ -347,6 +347,15 @@ const Atlascore = () => {
                             ✓ Comisiona
                           </span>
                         </div>
+                      ) : item.referentRule === 'Sin Comisión' ? (
+                        <div>
+                          <span className="badge" style={{ background: 'rgba(255, 255, 255, 0.08)', color: 'var(--text-muted)', border: '1px solid rgba(255, 255, 255, 0.15)' }}>
+                            Sin Comisión
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--success)', display: 'block', marginTop: '0.2rem' }}>
+                            100% queda en Atlascore
+                          </span>
+                        </div>
                       ) : (
                         <div>
                           <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: 'var(--danger)' }}>

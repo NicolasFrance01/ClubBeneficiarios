@@ -59,10 +59,13 @@ export const calculateReferralDeductions = (beneficiaries = [], transactions = [
         let commAmount = 0;
 
         if (referent) {
-          const type = referent.commissionType || 'ingreso';
-          const months = Number(referent.commissionMonths) || 1;
+          const type = referent.commissionType || referent.commission_type || 'ingreso';
+          const months = Number(referent.commissionMonths ?? referent.commission_months ?? 1);
 
-          if (type === 'ingreso') {
+          if (type === 'sin_comision') {
+            ruleLabel = 'Sin Comisión';
+            isEligible = false;
+          } else if (type === 'ingreso') {
             ruleLabel = 'Solo Ingreso';
             isEligible = (idx === 0);
           } else if (type === 'meses') {
@@ -117,13 +120,21 @@ export const calculateReferralDeductions = (beneficiaries = [], transactions = [
       let ruleLabel = 'Sin Referente';
 
       if (referent) {
-        ruleLabel = referent.commissionType === 'ingreso' ? 'Solo Ingreso' : (referent.commissionType === 'meses' ? `Ingreso + ${referent.commissionMonths} Meses` : 'Por Siempre');
-        isEligible = true; // Initial month is eligible
-        const actualDeduction = planComm;
-        totalReferentPayout += actualDeduction;
-        if (referentSummary[referent.id]) {
-          referentSummary[referent.id].totalCommissions += actualDeduction;
-          referentSummary[referent.id].qualifiedPaymentsCount += 1;
+        const type = referent.commissionType || referent.commission_type || 'ingreso';
+        const months = Number(referent.commissionMonths ?? referent.commission_months ?? 1);
+
+        if (type === 'sin_comision') {
+          ruleLabel = 'Sin Comisión';
+          isEligible = false;
+        } else {
+          ruleLabel = type === 'ingreso' ? 'Solo Ingreso' : (type === 'meses' ? `Ingreso + ${months} Meses` : 'Por Siempre');
+          isEligible = true; // Initial month is eligible
+          const actualDeduction = planComm;
+          totalReferentPayout += actualDeduction;
+          if (referentSummary[referent.id]) {
+            referentSummary[referent.id].totalCommissions += actualDeduction;
+            referentSummary[referent.id].qualifiedPaymentsCount += 1;
+          }
         }
       }
 

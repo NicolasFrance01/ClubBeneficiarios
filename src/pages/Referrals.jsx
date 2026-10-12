@@ -101,7 +101,8 @@ const Referrals = () => {
       (r.phone || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (r.cbuAlias || r.cbu_alias || '').toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesType = typeFilter === 'todos' || (r.commissionType || r.commission_type) === typeFilter;
+    const currentType = r.commissionType || r.commission_type || 'ingreso';
+    const matchesType = typeFilter === 'todos' || currentType === typeFilter;
     return matchesSearch && matchesType;
   });
 
@@ -181,6 +182,7 @@ const Referrals = () => {
             style={{ width: 'auto', padding: '0.4rem 0.8rem' }}
           >
             <option value="todos">Todos los Tipos</option>
+            <option value="sin_comision">Sin Comisión</option>
             <option value="ingreso">Solo Ingreso</option>
             <option value="meses">Por Cantidad de Meses</option>
             <option value="siempre">Por Siempre</option>
@@ -242,6 +244,11 @@ const Referrals = () => {
                       </td>
 
                       <td>
+                        {type === 'sin_comision' && (
+                          <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                            Sin Comisión (0%)
+                          </span>
+                        )}
                         {type === 'ingreso' && (
                           <span className="badge" style={{ background: 'rgba(0, 242, 254, 0.1)', color: 'var(--primary)', border: '1px solid rgba(0, 242, 254, 0.3)' }}>
                             Solo Ingreso (1 cuota)
@@ -260,12 +267,20 @@ const Referrals = () => {
                       </td>
 
                       <td>
-                        <span className="badge" style={{ background: 'rgba(0, 242, 254, 0.08)', color: 'var(--primary)', border: '1px solid rgba(0, 242, 254, 0.2)' }}>
-                          100% Comisión según Plan
-                        </span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.2rem' }}>
-                          (Silver, Gold o Platinum)
-                        </span>
+                        {type === 'sin_comision' ? (
+                          <span className="badge" style={{ background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-muted)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                            $0 (Sin descuento a Atlascore)
+                          </span>
+                        ) : (
+                          <>
+                            <span className="badge" style={{ background: 'rgba(0, 242, 254, 0.08)', color: 'var(--primary)', border: '1px solid rgba(0, 242, 254, 0.2)' }}>
+                              100% Comisión según Plan
+                            </span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.2rem' }}>
+                              (Silver, Gold o Platinum)
+                            </span>
+                          </>
+                        )}
                       </td>
 
                       <td>
@@ -396,6 +411,7 @@ const Referrals = () => {
                     value={form.commissionType} 
                     onChange={(e) => setForm({ ...form, commissionType: e.target.value })}
                   >
+                    <option value="sin_comision">Sin Comisión (0% - No descuenta del total de Atlascore)</option>
                     <option value="ingreso">Solo Ingreso (Solo comisiona la cuota de alta de cada nuevo beneficiario)</option>
                     <option value="meses">Por Cantidad de Meses (Ingreso + N meses posteriores)</option>
                     <option value="siempre">Por Siempre (Todas las cuotas mensuales indefinidamente)</option>
@@ -420,18 +436,32 @@ const Referrals = () => {
                   </div>
                 )}
 
-                {/* Info Card: Full Plan Commission */}
-                <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid var(--primary)', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                  <Info size={18} color="var(--primary)" style={{ minWidth: '18px', marginTop: '2px' }} />
-                  <div>
-                    <strong style={{ fontSize: '0.85rem', color: 'var(--text-main)', display: 'block' }}>
-                      Valor de la Comisión: 100% de la Comisión del Plan
-                    </strong>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      El referente siempre recibe el valor total de la comisión de Atlascore según el plan que venda cada beneficiario (Silver, Gold o Platinum), descontándose del total de Atlascore durante el tiempo configurado.
-                    </span>
+                {/* Info Card: Full Plan Commission or Zero Commission */}
+                {form.commissionType === 'sin_comision' ? (
+                  <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid var(--danger)', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                    <Info size={18} color="var(--danger)" style={{ minWidth: '18px', marginTop: '2px' }} />
+                    <div>
+                      <strong style={{ fontSize: '0.85rem', color: 'var(--text-main)', display: 'block' }}>
+                        Sin Comisión (0% - No genera descuento a Atlascore)
+                      </strong>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        Este referente figurará asociado a sus beneficiarios para seguimiento, pero no comisionará sobre las cuotas. No se aplicará ningún descuento sobre el total de Atlascore.
+                      </span>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid var(--primary)', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                    <Info size={18} color="var(--primary)" style={{ minWidth: '18px', marginTop: '2px' }} />
+                    <div>
+                      <strong style={{ fontSize: '0.85rem', color: 'var(--text-main)', display: 'block' }}>
+                        Valor de la Comisión: 100% de la Comisión del Plan
+                      </strong>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        El referente siempre recibe el valor total de la comisión de Atlascore según el plan que venda cada beneficiario (Silver, Gold o Platinum), descontándose del total de Atlascore durante el tiempo configurado.
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="input-group">
@@ -463,7 +493,15 @@ const Referrals = () => {
               <div>
                 <h2 style={{ margin: 0 }}>Beneficiarios de {selectedReferent.name}</h2>
                 <p style={{ margin: 0, fontSize: '0.85rem' }}>
-                  Regla actual: <strong>{selectedReferent.commissionType === 'ingreso' ? 'Solo Ingreso' : selectedReferent.commissionType === 'meses' ? `Ingreso + ${selectedReferent.commissionMonths || 1} Meses` : 'Por Siempre'}</strong> (100% comisión del plan contratado)
+                  Regla actual: <strong>{
+                    selectedReferent.commissionType === 'sin_comision'
+                      ? 'Sin Comisión'
+                      : selectedReferent.commissionType === 'ingreso'
+                        ? 'Solo Ingreso'
+                        : selectedReferent.commissionType === 'meses'
+                          ? `Ingreso + ${selectedReferent.commissionMonths || 1} Meses`
+                          : 'Por Siempre'
+                  }</strong> {selectedReferent.commissionType === 'sin_comision' ? '(0% de comisión - No descuenta de Atlascore)' : '(100% comisión del plan contratado)'}
                 </p>
               </div>
               <button onClick={() => setShowDetailModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
