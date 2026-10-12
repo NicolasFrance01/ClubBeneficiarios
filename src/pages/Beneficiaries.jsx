@@ -39,7 +39,6 @@ const Beneficiaries = () => {
           name: refName,
           commissionType: 'ingreso',
           commissionMonths: 1,
-          commissionAmount: 2500,
           status: 'activo'
         });
       }

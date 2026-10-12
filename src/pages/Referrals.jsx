@@ -3,7 +3,7 @@ import { AppContext } from '../context/AppContext';
 import { calculateReferralDeductions } from '../utils/referralCalculations';
 import { 
   Users, Plus, Edit2, Trash2, Eye, Search, CheckCircle2, Clock, 
-  DollarSign, Share2, Award, ArrowRight, X, AlertCircle, Phone, CreditCard
+  DollarSign, Share2, Award, ArrowRight, X, AlertCircle, Phone, CreditCard, Info
 } from 'lucide-react';
 
 const Referrals = () => {
@@ -22,7 +22,6 @@ const Referrals = () => {
     cbuAlias: '',
     commissionType: 'ingreso', // 'ingreso' | 'meses' | 'siempre'
     commissionMonths: 1,
-    commissionAmount: 2500,
     status: 'activo'
   });
 
@@ -45,7 +44,6 @@ const Referrals = () => {
       cbuAlias: '',
       commissionType: 'ingreso',
       commissionMonths: 1,
-      commissionAmount: 2500,
       status: 'activo'
     });
     setShowModal(true);
@@ -60,7 +58,6 @@ const Referrals = () => {
       cbuAlias: ref.cbuAlias || ref.cbu_alias || '',
       commissionType: ref.commissionType || ref.commission_type || 'ingreso',
       commissionMonths: Number(ref.commissionMonths ?? ref.commission_months ?? 1),
-      commissionAmount: Number(ref.commissionAmount ?? ref.commission_amount ?? 2500),
       status: ref.status || 'activo'
     });
     setShowModal(true);
@@ -80,7 +77,6 @@ const Referrals = () => {
       cbuAlias: form.cbuAlias.trim(),
       commissionType: form.commissionType,
       commissionMonths: parseInt(form.commissionMonths) || 1,
-      commissionAmount: parseFloat(form.commissionAmount) || 2500,
       status: form.status
     };
 
@@ -201,7 +197,7 @@ const Referrals = () => {
                 <th>Referente</th>
                 <th>Contacto & Pago</th>
                 <th>Regla de Tiempo</th>
-                <th>Comisión / Cuota</th>
+                <th>Comisión Asignada</th>
                 <th>Beneficiarios</th>
                 <th>Total Devengado</th>
                 <th>Acciones</th>
@@ -220,7 +216,6 @@ const Referrals = () => {
                   const bCount = summary.beneficiaryNames ? summary.beneficiaryNames.size : 0;
                   const type = ref.commissionType || ref.commission_type || 'ingreso';
                   const months = Number(ref.commissionMonths ?? ref.commission_months ?? 1);
-                  const commAmount = Number(ref.commissionAmount ?? ref.commission_amount ?? 2500);
 
                   return (
                     <tr key={ref.id} style={{ opacity: ref.status === 'inactivo' ? 0.6 : 1 }}>
@@ -265,7 +260,12 @@ const Referrals = () => {
                       </td>
 
                       <td>
-                        <strong style={{ color: 'var(--text-main)' }}>${commAmount.toLocaleString()}</strong>
+                        <span className="badge" style={{ background: 'rgba(0, 242, 254, 0.08)', color: 'var(--primary)', border: '1px solid rgba(0, 242, 254, 0.2)' }}>
+                          100% Comisión según Plan
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.2rem' }}>
+                          (Silver, Gold o Platinum)
+                        </span>
                       </td>
 
                       <td>
@@ -420,20 +420,17 @@ const Referrals = () => {
                   </div>
                 )}
 
-                <div className="input-group" style={{ margin: 0 }}>
-                  <label>Monto de Comisión que recibe el referente por cuota válida ($):</label>
-                  <input 
-                    type="number" 
-                    min="0" 
-                    step="100" 
-                    className="input-field" 
-                    value={form.commissionAmount} 
-                    onChange={(e) => setForm({ ...form, commissionAmount: e.target.value })} 
-                    placeholder="2500" 
-                  />
-                  <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
-                    Esta plata se le restará a la ganancia de Atlascore y se le asignará al referente.
-                  </small>
+                {/* Info Card: Full Plan Commission */}
+                <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid var(--primary)', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                  <Info size={18} color="var(--primary)" style={{ minWidth: '18px', marginTop: '2px' }} />
+                  <div>
+                    <strong style={{ fontSize: '0.85rem', color: 'var(--text-main)', display: 'block' }}>
+                      Valor de la Comisión: 100% de la Comisión del Plan
+                    </strong>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      El referente siempre recibe el valor total de la comisión de Atlascore según el plan que venda cada beneficiario (Silver, Gold o Platinum), descontándose del total de Atlascore durante el tiempo configurado.
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -466,7 +463,7 @@ const Referrals = () => {
               <div>
                 <h2 style={{ margin: 0 }}>Beneficiarios de {selectedReferent.name}</h2>
                 <p style={{ margin: 0, fontSize: '0.85rem' }}>
-                  Regla actual: <strong>{selectedReferent.commissionType === 'ingreso' ? 'Solo Ingreso' : selectedReferent.commissionType === 'meses' ? `Ingreso + ${selectedReferent.commissionMonths || 1} Meses` : 'Por Siempre'}</strong> (${Number(selectedReferent.commissionAmount || 2500).toLocaleString()} por cuota)
+                  Regla actual: <strong>{selectedReferent.commissionType === 'ingreso' ? 'Solo Ingreso' : selectedReferent.commissionType === 'meses' ? `Ingreso + ${selectedReferent.commissionMonths || 1} Meses` : 'Por Siempre'}</strong> (100% comisión del plan contratado)
                 </p>
               </div>
               <button onClick={() => setShowDetailModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>

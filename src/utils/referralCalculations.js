@@ -61,7 +61,6 @@ export const calculateReferralDeductions = (beneficiaries = [], transactions = [
         if (referent) {
           const type = referent.commissionType || 'ingreso';
           const months = Number(referent.commissionMonths) || 1;
-          commAmount = Number(referent.commissionAmount) || 2500;
 
           if (type === 'ingreso') {
             ruleLabel = 'Solo Ingreso';
@@ -76,7 +75,8 @@ export const calculateReferralDeductions = (beneficiaries = [], transactions = [
           }
 
           if (isEligible) {
-            const actualDeduction = Math.min(commAmount, planComm);
+            // Referent receives 100% of the plan's commission for this payment
+            const actualDeduction = planComm;
             totalReferentPayout += actualDeduction;
             if (referentSummary[referent.id]) {
               referentSummary[referent.id].totalCommissions += actualDeduction;
@@ -89,7 +89,7 @@ export const calculateReferralDeductions = (beneficiaries = [], transactions = [
           }
         }
 
-        const deduction = isEligible ? Math.min(commAmount, planComm) : 0;
+        const deduction = isEligible ? planComm : 0;
         const atlasNet = Math.max(0, planComm - deduction);
 
         items.push({
@@ -115,13 +115,11 @@ export const calculateReferralDeductions = (beneficiaries = [], transactions = [
       let isEligible = false;
       const periodLabel = 'Ingreso (Mes 1)';
       let ruleLabel = 'Sin Referente';
-      let commAmount = 0;
 
       if (referent) {
-        commAmount = Number(referent.commissionAmount) || 2500;
         ruleLabel = referent.commissionType === 'ingreso' ? 'Solo Ingreso' : (referent.commissionType === 'meses' ? `Ingreso + ${referent.commissionMonths} Meses` : 'Por Siempre');
         isEligible = true; // Initial month is eligible
-        const actualDeduction = Math.min(commAmount, planComm);
+        const actualDeduction = planComm;
         totalReferentPayout += actualDeduction;
         if (referentSummary[referent.id]) {
           referentSummary[referent.id].totalCommissions += actualDeduction;
@@ -129,7 +127,7 @@ export const calculateReferralDeductions = (beneficiaries = [], transactions = [
         }
       }
 
-      const deduction = isEligible ? Math.min(commAmount, planComm) : 0;
+      const deduction = isEligible ? planComm : 0;
       const atlasNet = Math.max(0, planComm - deduction);
 
       items.push({
