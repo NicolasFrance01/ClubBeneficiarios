@@ -119,12 +119,52 @@ export default async function handler(req, res) {
         res.status(200).json({ success: true });
       }
       else if (action === 'ADD_TRANSACTION') {
-        const { amount, type, method, beneficiary, details, ref, comprobante_url } = payload;
-        const result = await pool.query(
-          'INSERT INTO transactions (amount, type, method, beneficiary, details, ref, comprobante_url) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-          [amount, type, method, beneficiary, details, ref, comprobante_url]
-        );
+        const { amount, type, method, beneficiary, details, ref, comprobante_url, comprobanteUrl, date } = payload;
+        const compUrl = comprobante_url || comprobanteUrl || null;
+        let result;
+        if (date) {
+          result = await pool.query(
+            'INSERT INTO transactions (amount, type, method, beneficiary, details, ref, comprobante_url, date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+            [amount, type, method, beneficiary, details, ref, compUrl, date]
+          );
+        } else {
+          result = await pool.query(
+            'INSERT INTO transactions (amount, type, method, beneficiary, details, ref, comprobante_url) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+            [amount, type, method, beneficiary, details, ref, compUrl]
+          );
+        }
         res.status(200).json(result.rows[0]);
+      }
+      else if (action === 'UPDATE_TRANSACTION') {
+        const { id, ...fields } = payload;
+        const allowedColumns = {
+          amount: 'amount',
+          type: 'type',
+          method: 'method',
+          beneficiary: 'beneficiary',
+          details: 'details',
+          ref: 'ref',
+          comprobante_url: 'comprobante_url',
+          comprobanteUrl: 'comprobante_url',
+          date: 'date'
+        };
+
+        const dbFields = {};
+        for (let key in fields) {
+          if (allowedColumns[key]) {
+            const col = allowedColumns[key];
+            dbFields[col] = fields[key];
+          }
+        }
+
+        const updates = Object.keys(dbFields).map((k, i) => `${k} = $${i + 2}`).join(', ');
+        const values = Object.values(dbFields);
+        const result = await pool.query(`UPDATE transactions SET ${updates} WHERE id = $1 RETURNING *`, [id, ...values]);
+        res.status(200).json(result.rows[0]);
+      }
+      else if (action === 'DELETE_TRANSACTION') {
+        await pool.query('DELETE FROM transactions WHERE id = $1', [payload.id]);
+        res.status(200).json({ success: true });
       }
       else if (action === 'ADD_REFERENT') {
         const { name, phone, email, cbuAlias, commissionType, commissionMonths, commissionAmount, status } = payload;

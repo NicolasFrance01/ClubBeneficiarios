@@ -195,6 +195,22 @@ export const AppProvider = ({ children }) => {
     syncAction('ADD_TRANSACTION', transaction).then(() => fetchDb());
   };
 
+  const updateTransaction = (id, updatedFields) => {
+    setData(prev => ({
+      ...prev,
+      transactions: (prev.transactions || []).map(t => t.id === id ? { ...t, ...updatedFields } : t)
+    }));
+    syncAction('UPDATE_TRANSACTION', { id, ...updatedFields }).then(() => fetchDb());
+  };
+
+  const removeTransaction = (id) => {
+    setData(prev => ({
+      ...prev,
+      transactions: (prev.transactions || []).filter(t => t.id !== id)
+    }));
+    syncAction('DELETE_TRANSACTION', { id }).then(() => fetchDb());
+  };
+
   const addUser = (user) => {
     const tempId = Date.now();
     setData(prev => ({
@@ -273,6 +289,8 @@ export const AppProvider = ({ children }) => {
       toggleBeneficiaryStatus,
       removeBeneficiary,
       addTransaction,
+      updateTransaction,
+      removeTransaction,
       addUser,
       updateUser,
       removeUser,
