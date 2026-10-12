@@ -55,6 +55,46 @@ async function migrate() {
     `);
     console.log("Tabla 'transactions' creada o ya existe.");
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS referents (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        phone VARCHAR(100),
+        email VARCHAR(255),
+        cbu_alias VARCHAR(255),
+        commission_type VARCHAR(50) DEFAULT 'ingreso',
+        commission_months INTEGER DEFAULT 1,
+        commission_amount DECIMAL(10,2) DEFAULT 2500,
+        status VARCHAR(50) DEFAULT 'activo',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("Tabla 'referents' creada o ya existe.");
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS plans (
+        id VARCHAR(50) PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        base_price DECIMAL(10,2) NOT NULL,
+        commission DECIMAL(10,2) NOT NULL DEFAULT 5000,
+        description TEXT,
+        includes TEXT,
+        sedes TEXT
+      );
+    `);
+    console.log("Tabla 'plans' creada o ya existe.");
+
+    // Seed default plans if not already present
+    await pool.query(`
+      INSERT INTO plans (id, name, base_price, commission, description, includes, sedes)
+      VALUES 
+        ('silver', 'Plan Silver', 29000, 5000, 'Acondicionamiento base y clases grupales', 'Musculación, Funcional, Zumba, Gap', 'Red Manantial, Fitship, MG Fitness, Start Fit'),
+        ('gold', 'Plan Gold', 42000, 6000, 'Entrenamiento de alta intensidad y especialidades', 'Crossfit, Boxeo, Hyrox, Rehabilitación Deportiva', 'Rusia Gym, Kaizen, Charly Box, Arena Training, Otb Training'),
+        ('platinum', 'Plan Platinum', 60000, 8000, 'Experiencia Premium, Acuática y Bienestar Integral', 'Pileta Libre, Natación, Aquagym, PoleSport, Yoga', 'Manantial Swim, Red Deporbas, La Rufina, El Club, Acro Flow Studio')
+      ON CONFLICT (id) DO NOTHING;
+    `);
+    console.log("Planes por defecto verificados.");
+
     // Insert fallback admin user if it doesn't exist
     const adminCheck = await pool.query("SELECT * FROM users WHERE email = 'nfrance@atlascore.com'");
     if (adminCheck.rows.length === 0) {

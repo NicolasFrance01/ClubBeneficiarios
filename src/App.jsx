@@ -1,6 +1,9 @@
 import React, { useContext, useState } from 'react';
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, BadgeDollarSign, ShieldCheck, Dumbbell, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  LayoutDashboard, Users, CreditCard, BadgeDollarSign, ShieldCheck, 
+  Dumbbell, LogOut, ChevronLeft, ChevronRight, Share2, TrendingUp 
+} from 'lucide-react';
 import { AppContext } from './context/AppContext';
 import Dashboard from './pages/Dashboard';
 import Beneficiaries from './pages/Beneficiaries';
@@ -8,6 +11,8 @@ import Plans from './pages/Plans';
 import Payments from './pages/Payments';
 import SystemUsers from './pages/SystemUsers';
 import FitnessGroups from './pages/FitnessGroups';
+import Referrals from './pages/Referrals';
+import Atlascore from './pages/Atlascore';
 import Login from './pages/Login';
 import './App.css';
 
@@ -43,6 +48,14 @@ function App() {
               <LayoutDashboard size={20} style={{ minWidth: '20px' }} />
               {!isCollapsed && <span>Dashboard</span>}
             </NavLink>
+            <NavLink to="/atlascore" className={({isActive}) => isActive ? 'nav-item active' : 'nav-item'} title="Atlascore">
+              <TrendingUp size={20} style={{ minWidth: '20px' }} />
+              {!isCollapsed && <span>Atlascore</span>}
+            </NavLink>
+            <NavLink to="/referentes" className={({isActive}) => isActive ? 'nav-item active' : 'nav-item'} title="Referentes">
+              <Share2 size={20} style={{ minWidth: '20px' }} />
+              {!isCollapsed && <span>Referentes</span>}
+            </NavLink>
             <NavLink to="/beneficiarios" className={({isActive}) => isActive ? 'nav-item active' : 'nav-item'} title="Beneficiarios">
               <Users size={20} style={{ minWidth: '20px' }} />
               {!isCollapsed && <span>Beneficiarios</span>}
@@ -76,6 +89,8 @@ function App() {
         <main className="main-content">
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/atlascore" element={<Atlascore />} />
+            <Route path="/referentes" element={<Referrals />} />
             <Route path="/beneficiarios" element={<Beneficiaries />} />
             <Route path="/planes" element={<Plans />} />
             <Route path="/fitness-groups" element={<FitnessGroups />} />

@@ -12,21 +12,39 @@ export const AppProvider = ({ children }) => {
   const mapDbToApp = (dbData) => {
     return {
       ...initialData,
-      users: dbData.users.map(u => ({
+      users: dbData.users ? dbData.users.map(u => ({
         ...u,
         needsPasswordChange: u.needs_password_change
-      })),
-      beneficiaries: dbData.beneficiaries.map(b => ({
+      })) : initialData.users,
+      beneficiaries: dbData.beneficiaries ? dbData.beneficiaries.map(b => ({
         ...b,
         paymentMethod: b.payment_method,
         referredBy: b.referred_by,
+        referente: b.referred_by,
         foto_frente: b.foto_frente,
         foto_dorso: b.foto_dorso
-      })),
-      transactions: dbData.transactions.map(t => ({
+      })) : [],
+      transactions: dbData.transactions ? dbData.transactions.map(t => ({
         ...t,
         comprobanteUrl: t.comprobante_url
-      }))
+      })) : [],
+      referents: dbData.referents ? dbData.referents.map(r => ({
+        ...r,
+        cbuAlias: r.cbu_alias,
+        commissionType: r.commission_type || 'ingreso',
+        commissionMonths: Number(r.commission_months) || 1,
+        commissionAmount: Number(r.commission_amount) || 2500,
+        createdAt: r.created_at
+      })) : [],
+      plans: dbData.plans && dbData.plans.length > 0 ? dbData.plans.map(p => ({
+        id: p.id,
+        name: p.name,
+        basePrice: Number(p.base_price),
+        commission: Number(p.commission),
+        description: p.description,
+        includes: p.includes,
+        sedes: p.sedes
+      })) : initialData.plans
     };
   };
 
@@ -202,6 +220,40 @@ export const AppProvider = ({ children }) => {
     syncAction('DELETE_USER', { id });
   };
 
+  const updatePlanCommission = (planId, newCommission) => {
+    const num = Number(newCommission);
+    setData(prev => ({
+      ...prev,
+      plans: prev.plans.map(p => p.id === planId ? { ...p, commission: num } : p)
+    }));
+    syncAction('UPDATE_PLAN', { id: planId, commission: num });
+  };
+
+  const addReferent = (referent) => {
+    const tempId = Date.now();
+    setData(prev => ({
+      ...prev,
+      referents: [...(prev.referents || []), { ...referent, id: tempId }]
+    }));
+    syncAction('ADD_REFERENT', referent).then(() => fetchDb());
+  };
+
+  const updateReferent = (id, updatedFields) => {
+    setData(prev => ({
+      ...prev,
+      referents: (prev.referents || []).map(r => r.id === id ? { ...r, ...updatedFields } : r)
+    }));
+    syncAction('UPDATE_REFERENT', { id, ...updatedFields });
+  };
+
+  const removeReferent = (id) => {
+    setData(prev => ({
+      ...prev,
+      referents: (prev.referents || []).filter(r => r.id !== id)
+    }));
+    syncAction('DELETE_REFERENT', { id });
+  };
+
   if (isLoading) {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--bg-main)', color: 'var(--primary)' }}>Cargando datos del servidor...</div>;
   }
@@ -215,6 +267,7 @@ export const AppProvider = ({ children }) => {
       logout,
       changePassword,
       updateCommission,
+      updatePlanCommission,
       addBeneficiary,
       updateBeneficiary,
       toggleBeneficiaryStatus,
@@ -222,7 +275,10 @@ export const AppProvider = ({ children }) => {
       addTransaction,
       addUser,
       updateUser,
-      removeUser
+      removeUser,
+      addReferent,
+      updateReferent,
+      removeReferent
     }}>
       {children}
     </AppContext.Provider>

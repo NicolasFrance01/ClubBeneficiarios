@@ -19,7 +19,8 @@ const Payments = () => {
     if (location.state?.prefill) {
       const b = location.state.prefill;
       const plan = data.plans.find(p => p.id === b.plan);
-      const finalPrice = calculateFinalPrice(plan.basePrice, b.paymentMethod, data.commission, data.iva);
+      const planComm = plan ? (Number(plan.commission) || 0) : 5000;
+      const finalPrice = plan ? calculateFinalPrice(plan.basePrice, b.paymentMethod, planComm, data.iva) : 0;
       
       setNewTx(prev => ({
         ...prev,
@@ -73,12 +74,13 @@ const Payments = () => {
     if (b.status === 'activo') {
       const plan = data.plans.find(p => p.id === b.plan);
       if (plan) {
+        const planComm = Number(plan.commission) || 0;
         const fgCut = calculateFitnessGroupCut(plan.basePrice, b.paymentMethod, data.iva);
         if (b.paymentMethod === 'transferencia') {
-          totalTransferencia += calculateFinalPrice(plan.basePrice, 'transferencia', data.commission, data.iva);
+          totalTransferencia += calculateFinalPrice(plan.basePrice, 'transferencia', planComm, data.iva);
           fgTransferencia += fgCut;
         } else {
-          totalEfectivo += calculateFinalPrice(plan.basePrice, 'efectivo', data.commission, data.iva);
+          totalEfectivo += calculateFinalPrice(plan.basePrice, 'efectivo', planComm, data.iva);
           fgEfectivo += fgCut;
         }
       }

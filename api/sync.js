@@ -9,11 +9,15 @@ export default async function handler(req, res) {
       const users = await pool.query('SELECT id, name, role, email, needs_password_change FROM users ORDER BY id ASC');
       const beneficiaries = await pool.query('SELECT * FROM beneficiaries ORDER BY id ASC');
       const transactions = await pool.query('SELECT * FROM transactions ORDER BY date DESC');
+      const referents = await pool.query('SELECT * FROM referents ORDER BY id ASC');
+      const plans = await pool.query('SELECT * FROM plans ORDER BY base_price ASC');
 
       res.status(200).json({
         users: users.rows,
         beneficiaries: beneficiaries.rows,
-        transactions: transactions.rows
+        transactions: transactions.rows,
+        referents: referents.rows,
+        plans: plans.rows
       });
     } else if (req.method === 'POST') {
       const { action, payload } = req.body;
@@ -98,6 +102,46 @@ export default async function handler(req, res) {
           'INSERT INTO transactions (amount, type, method, beneficiary, details, ref, comprobante_url) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
           [amount, type, method, beneficiary, details, ref, comprobante_url]
         );
+        res.status(200).json(result.rows[0]);
+      }
+      else if (action === 'ADD_REFERENT') {
+        const { name, phone, email, cbuAlias, commissionType, commissionMonths, commissionAmount, status } = payload;
+        const result = await pool.query(
+          'INSERT INTO referents (name, phone, email, cbu_alias, commission_type, commission_months, commission_amount, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+          [name, phone, email, cbuAlias, commissionType || 'ingreso', commissionMonths || 1, commissionAmount || 2500, status || 'activo']
+        );
+        res.status(200).json(result.rows[0]);
+      }
+      else if (action === 'UPDATE_REFERENT') {
+        const { id, ...fields } = payload;
+        const dbFields = {};
+        for(let key in fields) {
+          if(key === 'commissionType') dbFields['commission_type'] = fields[key];
+          else if(key === 'commissionMonths') dbFields['commission_months'] = fields[key];
+          else if(key === 'commissionAmount') dbFields['commission_amount'] = fields[key];
+          else if(key === 'cbuAlias') dbFields['cbu_alias'] = fields[key];
+          else dbFields[key] = fields[key];
+        }
+
+        const updates = Object.keys(dbFields).map((k, i) => `${k} = $${i + 2}`).join(', ');
+        const values = Object.values(dbFields);
+        const result = await pool.query(`UPDATE referents SET ${updates} WHERE id = $1 RETURNING *`, [id, ...values]);
+        res.status(200).json(result.rows[0]);
+      }
+      else if (action === 'DELETE_REFERENT') {
+        await pool.query('DELETE FROM referents WHERE id = $1', [payload.id]);
+        res.status(200).json({ success: true });
+      }
+      else if (action === 'UPDATE_PLAN') {
+        const { id, commission, basePrice } = payload;
+        let query = 'UPDATE plans SET commission = $2';
+        let params = [id, Number(commission)];
+        if (basePrice !== undefined) {
+          query += ', base_price = $3';
+          params.push(Number(basePrice));
+        }
+        query += ' WHERE id = $1 RETURNING *';
+        const result = await pool.query(query, params);
         res.status(200).json(result.rows[0]);
       }
       else {

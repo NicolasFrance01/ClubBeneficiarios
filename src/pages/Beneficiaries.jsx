@@ -4,7 +4,7 @@ import { Plus, Edit2, Trash2, Camera, Clock, Check, Loader, X, Search, ArrowDown
 import { upload } from '@vercel/blob/client';
 
 const Beneficiaries = () => {
-  const { data, addBeneficiary, updateBeneficiary, toggleBeneficiaryStatus, removeBeneficiary } = useContext(AppContext);
+  const { data, addBeneficiary, updateBeneficiary, toggleBeneficiaryStatus, removeBeneficiary, addReferent } = useContext(AppContext);
   const [showModal, setShowModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedUserHistory, setSelectedUserHistory] = useState(null);
@@ -31,6 +31,20 @@ const Beneficiaries = () => {
   };
 
   const handleSave = () => {
+    const refName = (newB.referente || '').trim();
+    if (refName) {
+      const exists = (data.referents || []).some(r => r.name.toLowerCase() === refName.toLowerCase());
+      if (!exists && addReferent) {
+        addReferent({
+          name: refName,
+          commissionType: 'ingreso',
+          commissionMonths: 1,
+          commissionAmount: 2500,
+          status: 'activo'
+        });
+      }
+    }
+
     if (newB.id) {
       updateBeneficiary(newB.id, newB);
     } else {
@@ -229,7 +243,10 @@ const Beneficiaries = () => {
                 <label>Ingresado Por (Referente)</label>
                 <input type="text" list="referentes-list" className="input-field" value={newB.referente} onChange={e => setNewB({...newB, referente: e.target.value})} placeholder="Ej. Nicolas" />
                 <datalist id="referentes-list">
-                  {Array.from(new Set(data.beneficiaries.map(b => b.referente || b.referredBy).filter(Boolean))).map(ref => (
+                  {Array.from(new Set([
+                    ...(data.referents || []).map(r => r.name),
+                    ...data.beneficiaries.map(b => b.referente || b.referredBy)
+                  ].filter(Boolean))).map(ref => (
                     <option key={ref} value={ref} />
                   ))}
                 </datalist>
