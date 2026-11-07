@@ -1,12 +1,13 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import { calculateFinalPrice, calculateFitnessGroupCut } from '../store';
 import { AppContext } from '../context/AppContext';
-import { Users, TrendingUp, DollarSign, Activity, AlertCircle, ArrowRight } from 'lucide-react';
+import { Users, TrendingUp, DollarSign, Activity, AlertCircle, ArrowRight, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const { data } = useContext(AppContext);
   const navigate = useNavigate();
+  const [reminderSearch, setReminderSearch] = useState('');
 
   // Calculate stats
   const totalBeneficiaries = data.beneficiaries.filter(b => b.status === 'activo').length;
@@ -20,32 +21,76 @@ const Dashboard = () => {
       const plan = data.plans.find(p => p.id === b.plan);
       const finalPrice = calculateFinalPrice(plan.basePrice, b.paymentMethod, data.commission, data.iva);
       const fgCut = calculateFitnessGroupCut(plan.basePrice, b.paymentMethod, data.iva);
-      
       totalRevenue += finalPrice;
       totalFitnessGroup += fgCut;
       totalAtlasCommission += data.commission;
     }
   });
 
-  const today = new Date().getDate();
-  const isPaymentPeriod = today >= 1; // Assuming from 1st onwards we show reminders
+  const isPaymentPeriod = new Date().getDate() >= 1;
+
+  // All pending beneficiaries (no slice limit)
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const pendingBeneficiaries = data.beneficiaries.filter(b => {
+    if (b.status !== 'activo') return false;
+    const hasPaid = (data.transactions || []).some(tx =>
+      tx.beneficiary === b.name && tx.date.startsWith(currentMonth) && tx.type === 'ingreso'
+    );
+    return !hasPaid;
+  });
+
+  const filteredPending = pendingBeneficiaries.filter(b => {
+    const term = reminderSearch.trim().toLowerCase();
+    if (!term) return true;
+    const plan = data.plans.find(p => p.id === b.plan);
+    return (
+      (b.name || '').toLowerCase().includes(term) ||
+      (b.doc || '').toLowerCase().includes(term) ||
+      (plan?.name || '').toLowerCase().includes(term) ||
+      (b.paymentMethod || '').toLowerCase().includes(term)
+    );
+  });
 
   return (
     <div className="dashboard-page">
       <h1>Dashboard Principal</h1>
-      <p className="mb-6">Resumen general de Atlascore & Fitness Groups</p>
+      <p className="mb-6">Resumen general de Atlascore &amp; Fitness Groups</p>
 
       {isPaymentPeriod && (
         <div className="glass-panel mb-6" style={{ borderLeft: '4px solid var(--primary)' }}>
-          <div className="flex-between mb-4">
+          {/* Header */}
+          <div className="flex-between mb-3">
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)', margin: 0 }}>
-              <AlertCircle size={20} /> Recordatorio de Pagos
+              <AlertCircle size={20} />
+              Recordatorio de Pagos
+              <span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
+                ({filteredPending.length}{reminderSearch ? '' : ` / ${pendingBeneficiaries.length}`} pendiente{pendingBeneficiaries.length !== 1 ? 's' : ''})
+              </span>
             </h3>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Período de cobro activo</span>
           </div>
-          <div className="table-container">
+
+          {/* Search */}
+          <div style={{ position: 'relative', marginBottom: '0.75rem', maxWidth: '340px' }}>
+            <Search
+              size={15}
+              color="var(--text-muted)"
+              style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
+            />
+            <input
+              type="text"
+              className="input-field"
+              placeholder="Buscar por nombre, DNI o plan..."
+              value={reminderSearch}
+              onChange={e => setReminderSearch(e.target.value)}
+              style={{ paddingLeft: '32px', margin: 0, fontSize: '0.85rem' }}
+            />
+          </div>
+
+          {/* Scrollable table */}
+          <div className="table-container" style={{ maxHeight: '300px', overflowY: 'auto' }}>
             <table className="data-table">
-              <thead>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: 'var(--bg-glass, #1a2235)' }}>
                 <tr>
                   <th>Beneficiario</th>
                   <th>Plan</th>
@@ -54,30 +99,41 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {data.beneficiaries.filter(b => {
-                  if (b.status !== 'activo') return false;
-                  // Check if there is already a payment this month
-                  const currentMonth = new Date().toISOString().slice(0, 7); // e.g., "2026-10"
-                  const hasPaid = (data.transactions || []).some(tx => 
-                    tx.beneficiary === b.name && tx.date.startsWith(currentMonth) && tx.type === 'ingreso'
-                  );
-                  return !hasPaid;
-                }).slice(0, 5).map(b => {
-                  const plan = data.plans.find(p => p.id === b.plan);
-                  const finalPrice = calculateFinalPrice(plan.basePrice, b.paymentMethod, data.commission, data.iva);
-                  return (
-                    <tr key={b.id}>
-                      <td><strong>{b.name}</strong></td>
-                      <td>{plan.name}</td>
-                      <td>${finalPrice.toLocaleString()} ({b.paymentMethod})</td>
-                      <td>
-                        <button className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => navigate('/pagos', { state: { prefill: b } })}>
-                          Registrar Pago <ArrowRight size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
+                {filteredPending.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)' }}>
+                      {reminderSearch
+                        ? 'No hay coincidencias para la búsqueda.'
+                        : '✅ Todos los beneficiarios han pagado este mes.'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredPending.map(b => {
+                    const plan = data.plans.find(p => p.id === b.plan);
+                    const finalPrice = calculateFinalPrice(plan.basePrice, b.paymentMethod, data.commission, data.iva);
+                    return (
+                      <tr key={b.id}>
+                        <td><strong>{b.name}</strong></td>
+                        <td><span className={`badge badge-${plan.id}`}>{plan.name}</span></td>
+                        <td>
+                          ${finalPrice.toLocaleString()}{' '}
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                            ({b.paymentMethod})
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            className="btn btn-primary"
+                            style={{ padding: '0.4rem 0.9rem', fontSize: '0.82rem' }}
+                            onClick={() => navigate('/pagos', { state: { prefill: b } })}
+                          >
+                            Registrar Pago <ArrowRight size={13} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -151,7 +207,7 @@ const Dashboard = () => {
                     <td style={{ textTransform: 'capitalize' }}>{b.paymentMethod}</td>
                     <td style={{ fontWeight: 600 }}>${finalPrice.toLocaleString()}</td>
                   </tr>
-                )
+                );
               })}
             </tbody>
           </table>
