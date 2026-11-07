@@ -1,13 +1,14 @@
 import React, { useContext, useState } from 'react';
 import { calculateFinalPrice, calculateFitnessGroupCut } from '../store';
 import { AppContext } from '../context/AppContext';
-import { Users, TrendingUp, DollarSign, Activity, AlertCircle, ArrowRight, Search } from 'lucide-react';
+import { Users, TrendingUp, DollarSign, Activity, AlertCircle, ArrowRight, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const { data } = useContext(AppContext);
   const navigate = useNavigate();
   const [reminderSearch, setReminderSearch] = useState('');
+  const [dismissedIds, setDismissedIds] = useState([]);
 
   // Calculate stats
   const totalBeneficiaries = data.beneficiaries.filter(b => b.status === 'activo').length;
@@ -33,6 +34,7 @@ const Dashboard = () => {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const pendingBeneficiaries = data.beneficiaries.filter(b => {
     if (b.status !== 'activo') return false;
+    if (dismissedIds.includes(b.id)) return false;
     const hasPaid = (data.transactions || []).some(tx =>
       tx.beneficiary === b.name && tx.date.startsWith(currentMonth) && tx.type === 'ingreso'
     );
@@ -58,8 +60,8 @@ const Dashboard = () => {
 
       {isPaymentPeriod && (
         <div className="glass-panel mb-6" style={{ borderLeft: '4px solid var(--primary)' }}>
-          {/* Header */}
-          <div className="flex-between mb-3">
+          {/* Header + search inline */}
+          <div className="flex-between mb-3" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)', margin: 0 }}>
               <AlertCircle size={20} />
               Recordatorio de Pagos
@@ -67,24 +69,26 @@ const Dashboard = () => {
                 ({filteredPending.length}{reminderSearch ? '' : ` / ${pendingBeneficiaries.length}`} pendiente{pendingBeneficiaries.length !== 1 ? 's' : ''})
               </span>
             </h3>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Período de cobro activo</span>
-          </div>
 
-          {/* Search */}
-          <div style={{ position: 'relative', marginBottom: '0.75rem', maxWidth: '340px' }}>
-            <Search
-              size={15}
-              color="var(--text-muted)"
-              style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
-            />
-            <input
-              type="text"
-              className="input-field"
-              placeholder="Buscar por nombre, DNI o plan..."
-              value={reminderSearch}
-              onChange={e => setReminderSearch(e.target.value)}
-              style={{ paddingLeft: '32px', margin: 0, fontSize: '0.85rem' }}
-            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              {/* Inline search */}
+              <div style={{ position: 'relative' }}>
+                <Search
+                  size={14}
+                  color="var(--text-muted)"
+                  style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
+                />
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="Buscar beneficiario..."
+                  value={reminderSearch}
+                  onChange={e => setReminderSearch(e.target.value)}
+                  style={{ paddingLeft: '28px', margin: 0, fontSize: '0.82rem', padding: '0.38rem 0.75rem 0.38rem 28px', width: '220px' }}
+                />
+              </div>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Período de cobro activo</span>
+            </div>
           </div>
 
           {/* Scrollable table */}
@@ -122,13 +126,31 @@ const Dashboard = () => {
                           </span>
                         </td>
                         <td>
-                          <button
-                            className="btn btn-primary"
-                            style={{ padding: '0.4rem 0.9rem', fontSize: '0.82rem' }}
-                            onClick={() => navigate('/pagos', { state: { prefill: b } })}
-                          >
-                            Registrar Pago <ArrowRight size={13} />
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                            <button
+                              className="btn btn-primary"
+                              style={{ padding: '0.4rem 0.9rem', fontSize: '0.82rem' }}
+                              onClick={() => navigate('/pagos', { state: { prefill: b } })}
+                            >
+                              Registrar Pago <ArrowRight size={13} />
+                            </button>
+                            <button
+                              title="Eliminar de recordatorio"
+                              onClick={() => setDismissedIds(prev => [...prev, b.id])}
+                              style={{
+                                background: 'rgba(239,68,68,0.1)',
+                                border: '1px solid rgba(239,68,68,0.25)',
+                                borderRadius: 'var(--radius-sm)',
+                                color: 'var(--danger)',
+                                cursor: 'pointer',
+                                padding: '0.38rem 0.5rem',
+                                display: 'flex',
+                                alignItems: 'center'
+                              }}
+                            >
+                              <X size={15} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
