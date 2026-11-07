@@ -2,9 +2,10 @@ import React, { useState, useContext } from 'react';
 import { AppContext } from '../context/AppContext';
 import { 
   Plus, Edit2, Trash2, Camera, Clock, Loader, X, Search, 
-  ArrowDown, ArrowUp, ChevronDown, UserCheck, Download, Shield, RotateCcw 
+  ArrowDown, ArrowUp, ChevronDown, UserCheck, Download, Shield, RotateCcw, FileText, CheckSquare, Square
 } from 'lucide-react';
 import { upload } from '@vercel/blob/client';
+import { downloadReceiptPDF } from '../utils/receiptGenerator';
 
 const Beneficiaries = () => {
   const { data, addBeneficiary, updateBeneficiary, toggleBeneficiaryStatus, removeBeneficiary, addReferent } = useContext(AppContext);
@@ -15,9 +16,11 @@ const Beneficiaries = () => {
   const [statusFilter, setStatusFilter] = useState('todos');
   const [planFilter, setPlanFilter] = useState('todos');
   const [showReferenteList, setShowReferenteList] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
   
   const [newB, setNewB] = useState({ 
     id: null, name: '', doc: '', email: '', phone: '', 
+    domicilio: '', fecha_nacimiento: '',
     plan: 'silver', paymentMethod: 'efectivo', referente: '', 
     foto_frente: '', foto_dorso: '' 
   });
@@ -48,6 +51,8 @@ const Beneficiaries = () => {
       doc: b.doc,
       email: b.email || '',
       phone: b.phone || '',
+      domicilio: b.domicilio || b.address || '',
+      fecha_nacimiento: b.fecha_nacimiento || b.birthDate || '',
       plan: b.plan,
       paymentMethod: b.paymentMethod || 'efectivo',
       referente: b.referente || b.referredBy || b.referred_by || '',
@@ -75,7 +80,9 @@ const Beneficiaries = () => {
     const finalBeneficiaryPayload = {
       ...newB,
       referente: refName,
-      referredBy: refName
+      referredBy: refName,
+      domicilio: (newB.domicilio || '').trim(),
+      fecha_nacimiento: newB.fecha_nacimiento || ''
     };
 
     if (newB.id) {
@@ -89,7 +96,7 @@ const Beneficiaries = () => {
     }
     setShowModal(false);
     setShowReferenteList(false);
-    setNewB({ id: null, name: '', doc: '', email: '', phone: '', plan: 'silver', paymentMethod: 'efectivo', referente: '', foto_frente: '', foto_dorso: '' });
+    setNewB({ id: null, name: '', doc: '', email: '', phone: '', domicilio: '', fecha_nacimiento: '', plan: 'silver', paymentMethod: 'efectivo', referente: '', foto_frente: '', foto_dorso: '' });
   };
 
   const handleViewHistory = (b) => {
@@ -138,10 +145,32 @@ const Beneficiaries = () => {
     return matchesSearch && matchesStatus && matchesPlan;
   });
 
-  // Export filtered beneficiaries with complete data to .CSV
+  // Toggle single beneficiary selection
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  // Toggle select all filtered beneficiaries
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredBeneficiaries.length && filteredBeneficiaries.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredBeneficiaries.map(b => b.id));
+    }
+  };
+
+  const isAllSelected = filteredBeneficiaries.length > 0 && selectedIds.length === filteredBeneficiaries.length;
+
+  // Export filtered or selected beneficiaries to .CSV
   const handleExportCsv = () => {
-    if (filteredBeneficiaries.length === 0) {
-      alert('No hay beneficiarios que coincidan con los filtros aplicados para descargar.');
+    const targetList = selectedIds.length > 0 
+      ? filteredBeneficiaries.filter(b => selectedIds.includes(b.id)) 
+      : filteredBeneficiaries;
+
+    if (targetList.length === 0) {
+      alert('No hay beneficiarios seleccionados o disponibles para descargar.');
       return;
     }
 
@@ -149,6 +178,8 @@ const Beneficiaries = () => {
       'ID',
       'Nombre Completo',
       'Documento (DNI)',
+      'Domicilio',
+      'Fecha de Nacimiento',
       'Email',
       'Teléfono',
       'Plan ID',
@@ -169,7 +200,7 @@ const Beneficiaries = () => {
       return `"${str}"`;
     };
 
-    const rows = filteredBeneficiaries.map(b => {
+    const rows = targetList.map(b => {
       const planObj = data.plans.find(p => p.id === b.plan) || {};
       const planName = planObj.name || b.plan || '';
       const planBasePrice = planObj.basePrice !== undefined ? `$${Number(planObj.basePrice).toLocaleString()}` : '';
@@ -183,6 +214,8 @@ const Beneficiaries = () => {
         b.id,
         b.name || '',
         b.doc || '',
+        b.domicilio || b.address || '',
+        b.fecha_nacimiento || b.birthDate || '',
         b.email || '',
         b.phone || '',
         b.plan || '',
@@ -205,7 +238,10 @@ const Beneficiaries = () => {
     const link = document.createElement('a');
     link.href = url;
     const today = new Date().toISOString().split('T')[0];
-    link.setAttribute('download', `beneficiarios_filtrados_${today}.csv`);
+    const filename = selectedIds.length > 0 
+      ? `beneficiarios_seleccionados_${selectedIds.length}_${today}.csv`
+      : `beneficiarios_todos_${filteredBeneficiaries.length}_${today}.csv`;
+    link.setAttribute('download', filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -225,14 +261,23 @@ const Beneficiaries = () => {
           <button 
             className="btn btn-outline" 
             onClick={handleExportCsv}
-            title="Descargar listado completo de los beneficiarios filtrados en .csv"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+            title={selectedIds.length > 0 ? "Descargar solo los seleccionados" : "Descargar todos los beneficiarios filtrados"}
+            style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '0.5rem',
+              borderColor: selectedIds.length > 0 ? 'var(--primary)' : undefined,
+              color: selectedIds.length > 0 ? 'var(--primary)' : undefined
+            }}
           >
             <Download size={18} />
-            Descargar CSV ({filteredBeneficiaries.length})
+            {selectedIds.length > 0 
+              ? `Descargar CSV (${selectedIds.length} seleccionados)` 
+              : `Descargar CSV (Todos: ${filteredBeneficiaries.length})`
+            }
           </button>
           <button className="btn btn-primary" onClick={() => {
-            setNewB({ id: null, name: '', doc: '', email: '', phone: '', plan: 'silver', paymentMethod: 'efectivo', referente: '', foto_frente: '', foto_dorso: '' });
+            setNewB({ id: null, name: '', doc: '', email: '', phone: '', domicilio: '', fecha_nacimiento: '', plan: 'silver', paymentMethod: 'efectivo', referente: '', foto_frente: '', foto_dorso: '' });
             setShowModal(true);
           }}>
             <Plus size={18} />
@@ -312,8 +357,17 @@ const Beneficiaries = () => {
           <table className="data-table">
             <thead>
               <tr>
+                <th style={{ width: '40px', textAlign: 'center' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={isAllSelected} 
+                    onChange={toggleSelectAll} 
+                    title={isAllSelected ? "Deseleccionar todos" : "Seleccionar todos"}
+                    style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                  />
+                </th>
                 <th>Beneficiario</th>
-                <th>Contacto</th>
+                <th>Contacto y Domicilio</th>
                 <th>Plan</th>
                 <th>Ingresado por</th>
                 <th>Estado</th>
@@ -323,25 +377,41 @@ const Beneficiaries = () => {
             <tbody>
               {filteredBeneficiaries.length === 0 ? (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
                     No se encontraron beneficiarios que coincidan con los filtros aplicados.
                   </td>
                 </tr>
               ) : (
                 filteredBeneficiaries.map(b => {
                   const plan = data.plans.find(p => p.id === b.plan) || { name: b.plan, id: b.plan };
+                  const isSelected = selectedIds.includes(b.id);
                   return (
-                    <tr key={b.id} style={{ opacity: b.status === 'inactivo' ? 0.5 : 1 }}>
+                    <tr key={b.id} style={{ opacity: b.status === 'inactivo' ? 0.5 : 1, background: isSelected ? 'rgba(0, 242, 254, 0.04)' : undefined }}>
+                      <td style={{ textAlign: 'center' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={isSelected} 
+                          onChange={() => toggleSelect(b.id)} 
+                          style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                        />
+                      </td>
                       <td>
                         <div>
                           <strong style={{ display: 'block', color: 'var(--text-main)' }}>{b.name}</strong>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>DNI: {b.doc}</span>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                            DNI: {b.doc || '-'} {b.fecha_nacimiento ? `· Nac: ${b.fecha_nacimiento}` : ''}
+                          </span>
                         </div>
                       </td>
                       <td>
                         <div>
                           <span style={{ display: 'block', fontSize: '0.9rem' }}>{b.email || '-'}</span>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{b.phone || '-'}</span>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>{b.phone || '-'}</span>
+                          {b.domicilio && (
+                            <span style={{ fontSize: '0.78rem', color: 'var(--primary)', display: 'block', marginTop: '0.15rem' }}>
+                              📍 {b.domicilio}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td><span className={`badge badge-${plan.id}`}>{plan.name}</span></td>
@@ -421,6 +491,15 @@ const Beneficiaries = () => {
               <div className="input-group">
                 <label>Teléfono</label>
                 <input type="text" className="input-field" value={newB.phone} onChange={e => setNewB({...newB, phone: e.target.value})} placeholder="Ej. 351..." />
+              </div>
+
+              <div className="input-group">
+                <label>Fecha de Nacimiento</label>
+                <input type="date" className="input-field" value={newB.fecha_nacimiento} onChange={e => setNewB({...newB, fecha_nacimiento: e.target.value})} />
+              </div>
+              <div className="input-group">
+                <label>Domicilio</label>
+                <input type="text" className="input-field" value={newB.domicilio} onChange={e => setNewB({...newB, domicilio: e.target.value})} placeholder="Ej. Agenor noroña 2817 B°San Pablo" />
               </div>
               
               <div className="input-group">
@@ -643,6 +722,7 @@ const Beneficiaries = () => {
                       <th>Detalle</th>
                       <th>Método</th>
                       <th>Monto</th>
+                      <th style={{ textAlign: 'center' }}>Comprobante</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -653,6 +733,26 @@ const Beneficiaries = () => {
                         <td style={{ textTransform: 'capitalize' }}>{tx.method}</td>
                         <td style={{ fontWeight: 600, color: tx.type === 'ingreso' ? 'var(--success)' : 'var(--danger)' }}>
                           {tx.type === 'ingreso' ? '+' : '-'}${Number(tx.amount).toLocaleString()}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          {tx.type === 'ingreso' && (
+                            <button
+                              className="btn btn-outline"
+                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                              title="Descargar comprobante de pago PDF"
+                              onClick={() => {
+                                const userPlan = data.plans.find(p => p.id === selectedUserHistory.user.plan);
+                                downloadReceiptPDF({
+                                  transaction: tx,
+                                  beneficiary: selectedUserHistory.user,
+                                  plan: userPlan
+                                });
+                              }}
+                            >
+                              <FileText size={13} color="var(--primary)" />
+                              PDF
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}

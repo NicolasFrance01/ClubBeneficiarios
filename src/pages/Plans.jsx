@@ -4,9 +4,11 @@ import { calculateFinalPrice } from '../store';
 import { Edit3, CheckCircle2, Info, Check, X, ShieldCheck } from 'lucide-react';
 
 const Plans = () => {
-  const { data, updatePlanCommission } = useContext(AppContext);
+  const { data, updatePlanCommission, updatePlanBasePrice } = useContext(AppContext);
   const [editingPlanId, setEditingPlanId] = useState(null);
   const [tempCommission, setTempCommission] = useState('');
+  const [editingBasePricePlanId, setEditingBasePricePlanId] = useState(null);
+  const [tempBasePrice, setTempBasePrice] = useState('');
 
   const handleStartEdit = (plan) => {
     setEditingPlanId(plan.id);
@@ -23,6 +25,25 @@ const Plans = () => {
 
   const handleCancelEdit = () => {
     setEditingPlanId(null);
+  };
+
+  const handleStartEditBasePrice = (plan) => {
+    setEditingBasePricePlanId(plan.id);
+    setTempBasePrice(plan.basePrice || 0);
+  };
+
+  const handleSaveBasePrice = (planId) => {
+    const val = parseFloat(tempBasePrice);
+    if (!isNaN(val) && val >= 0) {
+      if (updatePlanBasePrice) {
+        updatePlanBasePrice(planId, val);
+      }
+    }
+    setEditingBasePricePlanId(null);
+  };
+
+  const handleCancelEditBasePrice = () => {
+    setEditingBasePricePlanId(null);
   };
 
   return (
@@ -46,6 +67,7 @@ const Plans = () => {
         {data.plans.map(plan => {
           const planComm = Number(plan.commission) || 0;
           const isThisEditing = editingPlanId === plan.id;
+          const isEditingBasePrice = editingBasePricePlanId === plan.id;
           const precioEfectivo = calculateFinalPrice(plan.basePrice, 'efectivo', planComm, data.iva);
           const precioTransferencia = calculateFinalPrice(plan.basePrice, 'transferencia', planComm, data.iva);
 
@@ -55,8 +77,48 @@ const Plans = () => {
                 <div className="flex-between mb-2">
                   <span className={`badge badge-${plan.id}`}>{plan.name}</span>
                 </div>
-                <h2>${plan.basePrice.toLocaleString()}</h2>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Costo base a Fitness Group (Efectivo)</p>
+                
+                {isEditingBasePrice ? (
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', margin: '0.4rem 0' }}>
+                    <span style={{ color: 'var(--text-main)', fontWeight: 700, fontSize: '1.25rem' }}>$</span>
+                    <input 
+                      type="number" 
+                      className="input-field" 
+                      value={tempBasePrice} 
+                      onChange={(e) => setTempBasePrice(e.target.value)}
+                      style={{ padding: '0.35rem 0.6rem', width: '130px', fontSize: '1.2rem', margin: 0 }}
+                      autoFocus
+                    />
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={() => handleSaveBasePrice(plan.id)}
+                      style={{ padding: '0.4rem 0.65rem', display: 'flex', alignItems: 'center' }}
+                      title="Guardar nuevo costo base"
+                    >
+                      <Check size={16} />
+                    </button>
+                    <button 
+                      style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--text-muted)', borderRadius: 'var(--radius-sm)', padding: '0.4rem 0.6rem', cursor: 'pointer' }}
+                      onClick={handleCancelEditBasePrice}
+                      title="Cancelar"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.2rem 0' }}>
+                    <h2 style={{ margin: 0 }}>${plan.basePrice.toLocaleString()}</h2>
+                    <button 
+                      onClick={() => handleStartEditBasePrice(plan)}
+                      style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: '0.25rem', display: 'flex', alignItems: 'center' }}
+                      title="Modificar costo base"
+                    >
+                      <Edit3 size={17} />
+                    </button>
+                  </div>
+                )}
+
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0 0' }}>Costo base a Fitness Group (Efectivo)</p>
               </div>
 
               {/* Individual Atlascore Commission Section */}

@@ -1,9 +1,10 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
 import { calculateFinalPrice, calculateFitnessGroupCut } from '../store';
-import { ArrowUpRight, ArrowDownRight, Briefcase, Landmark, Plus, Paperclip, Loader, Search, Edit2, Trash2, X } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Briefcase, Landmark, Plus, Paperclip, Loader, Search, Edit2, Trash2, X, FileText } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { upload } from '@vercel/blob/client';
+import { downloadReceiptPDF } from '../utils/receiptGenerator';
 
 const Payments = () => {
   const { data, addTransaction, updateTransaction, removeTransaction } = useContext(AppContext);
@@ -133,6 +134,17 @@ const Payments = () => {
       updateTransaction(editingTx.id, payload);
     } else {
       addTransaction(payload);
+      
+      // Auto-download receipt if it is an income / payment
+      if (payload.type === 'ingreso') {
+        const ben = data.beneficiaries.find(b => b.name.toLowerCase() === payload.beneficiary.toLowerCase());
+        const plan = ben ? data.plans.find(p => p.id === ben.plan) : null;
+        downloadReceiptPDF({
+          transaction: payload,
+          beneficiary: ben,
+          plan: plan
+        });
+      }
     }
 
     setShowModal(false);
@@ -314,6 +326,23 @@ const Payments = () => {
                     </td>
                     <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
+                        {tx.type === 'ingreso' && (
+                          <button 
+                            style={{ background: 'none', border: 'none', color: 'var(--success)', cursor: 'pointer', padding: '0.3rem', borderRadius: '4px' }} 
+                            title="Descargar comprobante de pago PDF" 
+                            onClick={() => {
+                              const ben = data.beneficiaries.find(b => b.name.toLowerCase() === (tx.beneficiary || '').toLowerCase());
+                              const plan = ben ? data.plans.find(p => p.id === ben.plan) : null;
+                              downloadReceiptPDF({
+                                transaction: tx,
+                                beneficiary: ben,
+                                plan: plan
+                              });
+                            }}
+                          >
+                            <FileText size={17} />
+                          </button>
+                        )}
                         <button 
                           style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: '0.3rem', borderRadius: '4px' }} 
                           title="Modificar transacción" 

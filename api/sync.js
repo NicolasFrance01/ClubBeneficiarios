@@ -6,6 +6,13 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
+      try {
+        await pool.query('ALTER TABLE beneficiaries ADD COLUMN IF NOT EXISTS domicilio TEXT;');
+        await pool.query('ALTER TABLE beneficiaries ADD COLUMN IF NOT EXISTS fecha_nacimiento VARCHAR(50);');
+      } catch (err) {
+        console.warn('Migration note:', err.message);
+      }
+
       const users = await pool.query('SELECT id, name, role, email, needs_password_change FROM users ORDER BY id ASC');
       const beneficiaries = await pool.query('SELECT * FROM beneficiaries ORDER BY id ASC');
       const transactions = await pool.query('SELECT * FROM transactions ORDER BY date DESC');
@@ -69,11 +76,11 @@ export default async function handler(req, res) {
         res.status(200).json({ success: true });
       }
       else if (action === 'ADD_BENEFICIARY') {
-        const { name, doc, email, phone, plan, paymentMethod, status, referredBy, referente, foto_frente, foto_dorso, date } = payload;
+        const { name, doc, email, phone, plan, paymentMethod, status, referredBy, referente, foto_frente, foto_dorso, date, domicilio, fecha_nacimiento } = payload;
         const finalReferred = (referredBy || referente || '').trim() || null;
         const result = await pool.query(
-          'INSERT INTO beneficiaries (name, doc, email, phone, plan, payment_method, status, referred_by, foto_frente, foto_dorso, date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
-          [name, doc, email, phone, plan, paymentMethod, status, finalReferred, foto_frente, foto_dorso, date]
+          'INSERT INTO beneficiaries (name, doc, email, phone, plan, payment_method, status, referred_by, foto_frente, foto_dorso, date, domicilio, fecha_nacimiento) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *',
+          [name, doc, email, phone, plan, paymentMethod, status, finalReferred, foto_frente, foto_dorso, date, domicilio || null, fecha_nacimiento || null]
         );
         res.status(200).json(result.rows[0]);
       }
@@ -92,6 +99,8 @@ export default async function handler(req, res) {
           referredBy: 'referred_by',
           referente: 'referred_by',
           referred_by: 'referred_by',
+          domicilio: 'domicilio',
+          fecha_nacimiento: 'fecha_nacimiento',
           foto_frente: 'foto_frente',
           foto_dorso: 'foto_dorso',
           date: 'date'
@@ -196,15 +205,24 @@ export default async function handler(req, res) {
       }
       else if (action === 'UPDATE_PLAN') {
         const { id, commission, basePrice } = payload;
-        let query = 'UPDATE plans SET commission = $2';
-        let params = [id, Number(commission)];
+        const updates = [];
+        const params = [id];
+        let idx = 2;
+        if (commission !== undefined) {
+          updates.push(`commission = $${idx++}`);
+          params.push(Number(commission));
+        }
         if (basePrice !== undefined) {
-          query += ', base_price = $3';
+          updates.push(`base_price = $${idx++}`);
           params.push(Number(basePrice));
         }
-        query += ' WHERE id = $1 RETURNING *';
-        const result = await pool.query(query, params);
-        res.status(200).json(result.rows[0]);
+        if (updates.length > 0) {
+          const query = `UPDATE plans SET ${updates.join(', ')} WHERE id = $1 RETURNING *`;
+          const result = await pool.query(query, params);
+          res.status(200).json(result.rows[0]);
+        } else {
+          res.status(200).json({ success: true });
+        }
       }
       else {
         res.status(400).json({ error: 'Unknown action' });

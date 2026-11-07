@@ -21,6 +21,8 @@ export const AppProvider = ({ children }) => {
         paymentMethod: b.payment_method,
         referredBy: b.referred_by,
         referente: b.referred_by,
+        domicilio: b.domicilio || b.address || '',
+        fecha_nacimiento: b.fecha_nacimiento || b.birth_date || '',
         foto_frente: b.foto_frente,
         foto_dorso: b.foto_dorso
       })) : [],
@@ -245,6 +247,15 @@ export const AppProvider = ({ children }) => {
     syncAction('UPDATE_PLAN', { id: planId, commission: num });
   };
 
+  const updatePlanBasePrice = (planId, newBasePrice) => {
+    const num = Number(newBasePrice);
+    setData(prev => ({
+      ...prev,
+      plans: prev.plans.map(p => p.id === planId ? { ...p, basePrice: num } : p)
+    }));
+    syncAction('UPDATE_PLAN', { id: planId, basePrice: num });
+  };
+
   const addReferent = (referent) => {
     const tempId = Date.now();
     setData(prev => ({
@@ -284,6 +295,7 @@ export const AppProvider = ({ children }) => {
       changePassword,
       updateCommission,
       updatePlanCommission,
+      updatePlanBasePrice,
       addBeneficiary,
       updateBeneficiary,
       toggleBeneficiaryStatus,
