@@ -18,6 +18,7 @@ export const AppProvider = ({ children }) => {
       })) : initialData.users,
       beneficiaries: dbData.beneficiaries ? dbData.beneficiaries.map(b => ({
         ...b,
+        name: (b.name || '').trim(),
         paymentMethod: b.payment_method,
         referredBy: b.referred_by,
         referente: b.referred_by,
@@ -28,8 +29,11 @@ export const AppProvider = ({ children }) => {
       })) : [],
       transactions: dbData.transactions ? dbData.transactions.map(t => ({
         ...t,
-        comprobanteUrl: t.comprobante_url
+        beneficiary: (t.beneficiary || '').trim(),
+        comprobanteUrl: t.comprobante_url,
+        receiptNumber: t.receipt_number || t.receiptNumber
       })) : [],
+      config: dbData.config || {},
       referents: dbData.referents ? dbData.referents.map(r => ({
         ...r,
         cbuAlias: r.cbu_alias,
@@ -281,6 +285,28 @@ export const AppProvider = ({ children }) => {
     syncAction('DELETE_REFERENT', { id });
   };
 
+  const getNextReceiptNumber = async () => {
+    try {
+      const res = await fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'GET_NEXT_RECEIPT_NUMBER' })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.receiptNumber) {
+          try {
+            localStorage.setItem('atlascore_receipt_sequence', json.sequence.toString());
+          } catch {}
+          return json.receiptNumber;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not fetch next receipt number from DB:', e);
+    }
+    return null;
+  };
+
   if (isLoading) {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--bg-main)', color: 'var(--primary)' }}>Cargando datos del servidor...</div>;
   }
@@ -308,7 +334,8 @@ export const AppProvider = ({ children }) => {
       removeUser,
       addReferent,
       updateReferent,
-      removeReferent
+      removeReferent,
+      getNextReceiptNumber
     }}>
       {children}
     </AppContext.Provider>

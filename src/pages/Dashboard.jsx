@@ -4,11 +4,38 @@ import { AppContext } from '../context/AppContext';
 import { Users, TrendingUp, DollarSign, Activity, AlertCircle, ArrowRight, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+const normalizeName = (str) =>
+  (str || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+
 const Dashboard = () => {
   const { data } = useContext(AppContext);
   const navigate = useNavigate();
   const [reminderSearch, setReminderSearch] = useState('');
-  const [dismissedIds, setDismissedIds] = useState([]);
+  
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const [dismissedIds, setDismissedIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`atlascore_dismissed_reminders_${currentMonth}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const handleDismiss = (id) => {
+    setDismissedIds(prev => {
+      const next = prev.includes(id) ? prev : [...prev, id];
+      try {
+        localStorage.setItem(`atlascore_dismissed_reminders_${currentMonth}`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
 
   // Calculate stats
   const totalBeneficiaries = data.beneficiaries.filter(b => b.status === 'activo').length;
@@ -30,14 +57,18 @@ const Dashboard = () => {
 
   const isPaymentPeriod = new Date().getDate() >= 1;
 
-  // All pending beneficiaries (no slice limit)
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  // All pending beneficiaries with resilient normalized matching
   const pendingBeneficiaries = data.beneficiaries.filter(b => {
     if (b.status !== 'activo') return false;
     if (dismissedIds.includes(b.id)) return false;
-    const hasPaid = (data.transactions || []).some(tx =>
-      tx.beneficiary === b.name && tx.date.startsWith(currentMonth) && tx.type === 'ingreso'
-    );
+    const bNorm = normalizeName(b.name);
+    const hasPaid = (data.transactions || []).some(tx => {
+      if (tx.type !== 'ingreso') return false;
+      const txNorm = normalizeName(tx.beneficiary);
+      if (txNorm !== bNorm) return false;
+      const dStr = String(tx.date || '');
+      return dStr.startsWith(currentMonth);
+    });
     return !hasPaid;
   });
 
@@ -136,7 +167,7 @@ const Dashboard = () => {
                             </button>
                             <button
                               title="Eliminar de recordatorio"
-                              onClick={() => setDismissedIds(prev => [...prev, b.id])}
+                              onClick={() => handleDismiss(b.id)}
                               style={{
                                 background: 'rgba(239,68,68,0.1)',
                                 border: '1px solid rgba(239,68,68,0.25)',

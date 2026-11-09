@@ -9,6 +9,19 @@ export default async function handler(req, res) {
       try {
         await pool.query('ALTER TABLE beneficiaries ADD COLUMN IF NOT EXISTS domicilio TEXT;');
         await pool.query('ALTER TABLE beneficiaries ADD COLUMN IF NOT EXISTS fecha_nacimiento VARCHAR(50);');
+        await pool.query('ALTER TABLE transactions ADD COLUMN IF NOT EXISTS receipt_number VARCHAR(100);');
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS app_config (
+            key VARCHAR(100) PRIMARY KEY,
+            value TEXT NOT NULL
+          )
+        `);
+        await pool.query(`
+          INSERT INTO app_config (key, value)
+          VALUES ('receipt_sequence', '107')
+          ON CONFLICT (key) DO UPDATE
+          SET value = GREATEST(app_config.value::int, 107)::text
+        `);
       } catch (err) {
         console.warn('Migration note:', err.message);
       }
@@ -18,13 +31,19 @@ export default async function handler(req, res) {
       const transactions = await pool.query('SELECT * FROM transactions ORDER BY date DESC');
       const referents = await pool.query('SELECT * FROM referents ORDER BY id ASC');
       const plans = await pool.query('SELECT * FROM plans ORDER BY base_price ASC');
+      let config = { receipt_sequence: '107' };
+      try {
+        const configRes = await pool.query('SELECT key, value FROM app_config');
+        configRes.rows.forEach(r => { config[r.key] = r.value; });
+      } catch {}
 
       res.status(200).json({
         users: users.rows,
         beneficiaries: beneficiaries.rows,
         transactions: transactions.rows,
         referents: referents.rows,
-        plans: plans.rows
+        plans: plans.rows,
+        config
       });
     } else if (req.method === 'POST') {
       const { action, payload } = req.body;
@@ -128,18 +147,20 @@ export default async function handler(req, res) {
         res.status(200).json({ success: true });
       }
       else if (action === 'ADD_TRANSACTION') {
-        const { amount, type, method, beneficiary, details, ref, comprobante_url, comprobanteUrl, date } = payload;
+        const { amount, type, method, beneficiary, details, ref, comprobante_url, comprobanteUrl, date, receipt_number, receiptNumber } = payload;
         const compUrl = comprobante_url || comprobanteUrl || null;
+        const recNum = receipt_number || receiptNumber || null;
+        const benName = (beneficiary || '').trim();
         let result;
         if (date) {
           result = await pool.query(
-            'INSERT INTO transactions (amount, type, method, beneficiary, details, ref, comprobante_url, date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-            [amount, type, method, beneficiary, details, ref, compUrl, date]
+            'INSERT INTO transactions (amount, type, method, beneficiary, details, ref, comprobante_url, date, receipt_number) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+            [amount, type, method, benName, details, ref, compUrl, date, recNum]
           );
         } else {
           result = await pool.query(
-            'INSERT INTO transactions (amount, type, method, beneficiary, details, ref, comprobante_url) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-            [amount, type, method, beneficiary, details, ref, compUrl]
+            'INSERT INTO transactions (amount, type, method, beneficiary, details, ref, comprobante_url, receipt_number) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+            [amount, type, method, benName, details, ref, compUrl, recNum]
           );
         }
         res.status(200).json(result.rows[0]);
@@ -155,14 +176,20 @@ export default async function handler(req, res) {
           ref: 'ref',
           comprobante_url: 'comprobante_url',
           comprobanteUrl: 'comprobante_url',
-          date: 'date'
+          date: 'date',
+          receipt_number: 'receipt_number',
+          receiptNumber: 'receipt_number'
         };
 
         const dbFields = {};
         for (let key in fields) {
           if (allowedColumns[key]) {
             const col = allowedColumns[key];
-            dbFields[col] = fields[key];
+            if (col === 'beneficiary') {
+              dbFields[col] = (fields[key] || '').trim();
+            } else {
+              dbFields[col] = fields[key];
+            }
           }
         }
 
@@ -170,6 +197,18 @@ export default async function handler(req, res) {
         const values = Object.values(dbFields);
         const result = await pool.query(`UPDATE transactions SET ${updates} WHERE id = $1 RETURNING *`, [id, ...values]);
         res.status(200).json(result.rows[0]);
+      }
+      else if (action === 'GET_NEXT_RECEIPT_NUMBER') {
+        const result = await pool.query(`
+          INSERT INTO app_config (key, value)
+          VALUES ('receipt_sequence', '108')
+          ON CONFLICT (key) DO UPDATE
+          SET value = (app_config.value::int + 1)::text
+          RETURNING value
+        `);
+        const nextSeq = parseInt(result.rows[0].value, 10);
+        const formatted = `[0001-${String(nextSeq).padStart(8, '0')}]`;
+        res.status(200).json({ sequence: nextSeq, receiptNumber: formatted });
       }
       else if (action === 'DELETE_TRANSACTION') {
         await pool.query('DELETE FROM transactions WHERE id = $1', [payload.id]);

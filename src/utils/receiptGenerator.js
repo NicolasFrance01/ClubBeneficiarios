@@ -87,8 +87,11 @@ export function formatDate(dateStr) {
   return String(dateStr).slice(0, 10);
 }
 
-// Sequential Receipt Number Generator (Starts at 102 as requested, increments with each generation)
-export function getOrAssignReceiptNumber(transaction) {
+// Sequential Receipt Number Generator (Stored in Neon PostgreSQL DB so it never resets across days/devices/incognito)
+export async function getOrAssignReceiptNumber(transaction, explicitReceiptNumber = null) {
+  if (explicitReceiptNumber) {
+    return explicitReceiptNumber;
+  }
   if (transaction?.receipt_number) {
     return transaction.receipt_number;
   }
@@ -96,34 +99,63 @@ export function getOrAssignReceiptNumber(transaction) {
     return transaction.receiptNumber;
   }
 
-  const txId = transaction?.id;
-  if (txId) {
-    const cached = localStorage.getItem(`atlascore_receipt_tx_${txId}`);
-    if (cached) return cached;
+  // Check if comprobante_url already embeds a receipt number like Comprobante_0001-00000103
+  if (transaction?.comprobante_url) {
+    const m = transaction.comprobante_url.match(/Comprobante_0001-(\d{8})/i);
+    if (m) {
+      return `[0001-${m[1]}]`;
+    }
   }
 
-  let currentSeq = 101; // so the very first increment produces 102
+  const txId = transaction?.id;
+  if (txId) {
+    try {
+      const cached = localStorage.getItem(`atlascore_receipt_tx_${txId}`);
+      if (cached) return cached;
+    } catch {}
+  }
+
+  // 1. Fetch next sequence atomically from Neon Database
+  try {
+    const res = await fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'GET_NEXT_RECEIPT_NUMBER' })
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json?.receiptNumber) {
+        try {
+          localStorage.setItem(RECEIPT_SEQ_KEY, json.sequence.toString());
+          if (txId) {
+            localStorage.setItem(`atlascore_receipt_tx_${txId}`, json.receiptNumber);
+          }
+        } catch {}
+        return json.receiptNumber;
+      }
+    }
+  } catch (err) {
+    console.warn('Could not contact DB for receipt sequence, falling back:', err);
+  }
+
+  // 2. Fallback if offline / network error (ensures >= 107)
+  let currentSeq = 107;
   try {
     const stored = localStorage.getItem(RECEIPT_SEQ_KEY);
     if (stored) {
       const parsed = parseInt(stored, 10);
-      if (!isNaN(parsed) && parsed >= 101) {
+      if (!isNaN(parsed) && parsed >= 107) {
         currentSeq = parsed;
       }
     }
-  } catch (e) {
-    console.warn('Error reading receipt sequence:', e);
-  }
+  } catch {}
 
   const nextSeq = currentSeq + 1;
   try {
     localStorage.setItem(RECEIPT_SEQ_KEY, nextSeq.toString());
-  } catch (e) {
-    console.warn('Error saving receipt sequence:', e);
-  }
+  } catch {}
 
   const formattedNum = `[0001-${String(nextSeq).padStart(8, '0')}]`;
-
   if (txId) {
     try {
       localStorage.setItem(`atlascore_receipt_tx_${txId}`, formattedNum);
@@ -158,7 +190,7 @@ async function getLogoBase64() {
 /**
  * Builds and downloads the payment receipt PDF
  */
-export async function downloadReceiptPDF({ transaction, beneficiary = null, plan = null }) {
+export async function downloadReceiptPDF({ transaction, beneficiary = null, plan = null, receiptNumber: explicitNum = null }) {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -170,7 +202,7 @@ export async function downloadReceiptPDF({ transaction, beneficiary = null, plan
   const contentWidth = pageWidth - (marginX * 2); // 174mm
   const rightX = marginX + contentWidth;
 
-  const receiptNumber = getOrAssignReceiptNumber(transaction);
+  const receiptNumber = await getOrAssignReceiptNumber(transaction, explicitNum);
   const logoBase64 = await getLogoBase64();
 
   // Top header green accent line
