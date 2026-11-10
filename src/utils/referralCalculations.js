@@ -1,8 +1,16 @@
+import { getTransactionMonth } from './monthUtils';
+
 /**
  * Utility functions for calculating Referent commissions and Atlascore net margin.
  */
 
-export const calculateReferralDeductions = (beneficiaries = [], transactions = [], referents = [], plans = []) => {
+export const calculateReferralDeductions = (
+  beneficiaries = [], 
+  transactions = [], 
+  referents = [], 
+  plans = [],
+  targetMonth = null
+) => {
   // Lookup map for referents by normalized name
   const refMap = new Map();
   referents.forEach(r => {
@@ -46,17 +54,23 @@ export const calculateReferralDeductions = (beneficiaries = [], transactions = [
     const plan = plans.find(p => p.id === b.plan);
     const planComm = plan ? (Number(plan.commission) || 0) : 5000;
 
-    if (referent && referentSummary[referent.id]) {
-      referentSummary[referent.id].beneficiaryNames.add(b.name);
-    }
-
     if (bTxs.length > 0) {
-      // Evaluate each registered payment transaction
+      // Evaluate each registered payment transaction chronologically
       bTxs.forEach((tx, idx) => {
+        const txMonth = getTransactionMonth(tx.date);
+        
+        // If targetMonth is provided and not 'todos', only include transactions belonging to targetMonth
+        if (targetMonth && targetMonth !== 'todos' && txMonth !== targetMonth) {
+          return;
+        }
+
+        if (referent && referentSummary[referent.id]) {
+          referentSummary[referent.id].beneficiaryNames.add(b.name);
+        }
+
         let isEligible = false;
         const periodLabel = idx === 0 ? 'Ingreso' : `Mes ${idx}`;
         let ruleLabel = 'Sin Referente';
-        let commAmount = 0;
 
         if (referent) {
           const type = referent.commissionType || referent.commission_type || 'ingreso';
@@ -113,8 +127,8 @@ export const calculateReferralDeductions = (beneficiaries = [], transactions = [
           atlasNet: atlasNet
         });
       });
-    } else if (b.status === 'activo') {
-      // Fallback if active beneficiary hasn't registered a transaction in the table yet
+    } else if (b.status === 'activo' && (!targetMonth || targetMonth === 'todos')) {
+      // Only project onto "todos" or if unconstrained, never create fake projected items in past months
       let isEligible = false;
       const periodLabel = 'Ingreso (Mes 1)';
       let ruleLabel = 'Sin Referente';
@@ -128,12 +142,13 @@ export const calculateReferralDeductions = (beneficiaries = [], transactions = [
           isEligible = false;
         } else {
           ruleLabel = type === 'ingreso' ? 'Solo Ingreso' : (type === 'meses' ? `Ingreso + ${months} Meses` : 'Por Siempre');
-          isEligible = true; // Initial month is eligible
+          isEligible = true;
           const actualDeduction = planComm;
           totalReferentPayout += actualDeduction;
           if (referentSummary[referent.id]) {
             referentSummary[referent.id].totalCommissions += actualDeduction;
             referentSummary[referent.id].qualifiedPaymentsCount += 1;
+            referentSummary[referent.id].beneficiaryNames.add(b.name);
           }
         }
       }

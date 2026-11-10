@@ -2,6 +2,8 @@ import React, { useState, useContext } from 'react';
 import { AppContext } from '../context/AppContext';
 import { calculateFinalPrice, calculateFitnessGroupCut } from '../store';
 import { calculateReferralDeductions } from '../utils/referralCalculations';
+import MonthSelector from '../components/MonthSelector';
+import { getCurrentMonth, getTransactionMonth, formatMonthLabel } from '../utils/monthUtils';
 import { 
   ShieldCheck, Landmark, Briefcase, DollarSign, TrendingUp, Users, 
   ArrowRight, Search, CheckCircle2, AlertCircle, Copy, Check, Filter, Layers
@@ -9,11 +11,17 @@ import {
 
 const Atlascore = () => {
   const { data } = useContext(AppContext);
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMethod, setSelectedMethod] = useState('todos');
   const [copiedId, setCopiedId] = useState(null);
 
-  // 1. Calculate Gross Atlascore Commissions from Transfer and Cash (same as in Payments.jsx)
+  // 1. Calculate Gross Atlascore Commissions from Transfer and Cash for selected month
+  const monthIngresos = (data.transactions || []).filter(tx => {
+    if (selectedMonth === 'todos') return tx.type === 'ingreso';
+    return tx.type === 'ingreso' && getTransactionMonth(tx.date) === selectedMonth;
+  });
+
   let totalTransferencia = 0;
   let fgTransferencia = 0;
   let atlasTransferencia = 0;
@@ -22,33 +30,37 @@ const Atlascore = () => {
   let fgEfectivo = 0;
   let atlasEfectivo = 0;
 
-  (data.beneficiaries || []).forEach(b => {
-    if (b.status === 'activo') {
-      const plan = (data.plans || []).find(p => p.id === b.plan);
-      if (plan) {
-        const planComm = Number(plan.commission) || 0;
-        const fgCut = calculateFitnessGroupCut(plan.basePrice, b.paymentMethod, data.iva);
-        if (b.paymentMethod === 'transferencia') {
-          totalTransferencia += calculateFinalPrice(plan.basePrice, 'transferencia', planComm, data.iva);
-          fgTransferencia += fgCut;
-          atlasTransferencia += planComm;
-        } else {
-          totalEfectivo += calculateFinalPrice(plan.basePrice, 'efectivo', planComm, data.iva);
-          fgEfectivo += fgCut;
-          atlasEfectivo += planComm;
-        }
-      }
+  monthIngresos.forEach(tx => {
+    const bNameNorm = (tx.beneficiary || '').trim().toLowerCase();
+    const b = (data.beneficiaries || []).find(ben => (ben.name || '').trim().toLowerCase() === bNameNorm);
+    const plan = (data.plans || []).find(p => p.id === (b ? b.plan : null)) || { name: 'Plan', basePrice: 29000, commission: 5000 };
+    const planComm = Number(plan.commission) || 5000;
+    const amount = Number(tx.amount || 0);
+
+    if (tx.method === 'transferencia') {
+      const fgCut = calculateFitnessGroupCut(plan.basePrice, 'transferencia', data.iva);
+      const atlasCut = Math.max(0, amount - fgCut);
+      totalTransferencia += amount;
+      fgTransferencia += fgCut;
+      atlasTransferencia += atlasCut;
+    } else {
+      const fgCut = calculateFitnessGroupCut(plan.basePrice, 'efectivo', data.iva);
+      const atlasCut = Math.max(0, amount - fgCut);
+      totalEfectivo += amount;
+      fgEfectivo += fgCut;
+      atlasEfectivo += atlasCut;
     }
   });
 
   const totalAtlasBruto = atlasTransferencia + atlasEfectivo;
 
-  // 2. Calculate Referent Deductions based on configured timing rules
+  // 2. Calculate Referent Deductions filtered by selected month
   const calculation = calculateReferralDeductions(
     data.beneficiaries || [],
     data.transactions || [],
     data.referents || [],
-    data.plans || []
+    data.plans || [],
+    selectedMonth
   );
 
   const totalDeduccionReferentes = calculation.totalReferentPayout || 0;
@@ -83,14 +95,21 @@ const Atlascore = () => {
   return (
     <div className="atlascore-page">
       {/* Page Header */}
-      <div className="flex-between mb-6">
+      <div className="flex-between mb-6" style={{ flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <ShieldCheck size={32} color="var(--primary)" />
             Módulo Atlascore
           </h1>
-          <p>Consolidación de cuenta única, liquidación a referentes por tiempo y margen neto de ganancia</p>
+          <p>Consolidación de cuenta única, liquidación a referentes y margen neto ({formatMonthLabel(selectedMonth)})</p>
         </div>
+        <MonthSelector 
+          selectedMonth={selectedMonth} 
+          onChange={setSelectedMonth} 
+          transactions={data.transactions || []} 
+          includeAllOption={true}
+          label="Período"
+        />
       </div>
 
       {/* Main Income Breakdown (Transferencia + Efectivo = Una Sola Cuenta) */}
@@ -306,7 +325,7 @@ const Atlascore = () => {
               {filteredItems.length === 0 ? (
                 <tr>
                   <td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
-                    No se encontraron registros de beneficiarios o pagos.
+                    No se encontraron registros de comisiones o pagos en {formatMonthLabel(selectedMonth)}.
                   </td>
                 </tr>
               ) : (

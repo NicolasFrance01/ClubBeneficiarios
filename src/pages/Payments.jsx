@@ -5,6 +5,8 @@ import { ArrowUpRight, ArrowDownRight, Briefcase, Landmark, Plus, Paperclip, Loa
 import { useLocation } from 'react-router-dom';
 import { upload } from '@vercel/blob/client';
 import { downloadReceiptPDF } from '../utils/receiptGenerator';
+import MonthSelector from '../components/MonthSelector';
+import { getCurrentMonth, getTransactionMonth, formatMonthLabel } from '../utils/monthUtils';
 
 const Payments = () => {
   const { data, addTransaction, updateTransaction, removeTransaction } = useContext(AppContext);
@@ -12,6 +14,7 @@ const Payments = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   
   const initialTx = { 
     beneficiary: '', 
@@ -169,34 +172,58 @@ const Payments = () => {
     return String(rawDate).replace('T', ' ').slice(0, 16);
   };
 
-  const paymentHistory = data.transactions || [
-    { id: 101, date: '2026-10-09 10:30', amount: 65000, type: 'ingreso', method: 'transferencia', beneficiary: 'Maria Gomez', details: 'Cuota Octubre', ref: 'TRX-9921', comprobante_url: '' },
-    { id: 102, date: '2026-10-08 15:45', amount: 34000, type: 'ingreso', method: 'efectivo', beneficiary: 'Juan Perez', details: 'Cuota Octubre', ref: 'REC-0012', comprobante_url: '' }
-  ];
+  const paymentHistory = data.transactions || [];
+
+  // Filter transactions for the selected month (or all if 'todos')
+  const monthTransactions = paymentHistory.filter(tx => {
+    if (selectedMonth === 'todos') return true;
+    return getTransactionMonth(tx.date) === selectedMonth;
+  });
 
   let totalTransferencia = 0;
   let totalEfectivo = 0;
   let fgTransferencia = 0;
   let fgEfectivo = 0;
+  let atlasTransferencia = 0;
+  let atlasEfectivo = 0;
+  let pagosTransferenciaCount = 0;
+  let pagosEfectivoCount = 0;
 
-  data.beneficiaries.forEach(b => {
-    if (b.status === 'activo') {
-      const plan = data.plans.find(p => p.id === b.plan);
-      if (plan) {
-        const planComm = Number(plan.commission) || 0;
-        const fgCut = calculateFitnessGroupCut(plan.basePrice, b.paymentMethod, data.iva);
-        if (b.paymentMethod === 'transferencia') {
-          totalTransferencia += calculateFinalPrice(plan.basePrice, 'transferencia', planComm, data.iva);
-          fgTransferencia += fgCut;
+  monthTransactions.forEach(tx => {
+    if (tx.type === 'ingreso') {
+      const bNameNorm = (tx.beneficiary || '').trim().toLowerCase();
+      const b = (data.beneficiaries || []).find(ben => (ben.name || '').trim().toLowerCase() === bNameNorm);
+      const plan = b ? (data.plans || []).find(p => p.id === b.plan) : null;
+      const planComm = plan ? (Number(plan.commission) || 0) : 5000;
+      const amount = Number(tx.amount || 0);
+
+      if (tx.method === 'transferencia') {
+        totalTransferencia += amount;
+        pagosTransferenciaCount++;
+        if (plan) {
+          const cut = calculateFitnessGroupCut(plan.basePrice, 'transferencia', data.iva);
+          fgTransferencia += cut;
+          atlasTransferencia += (amount - cut);
         } else {
-          totalEfectivo += calculateFinalPrice(plan.basePrice, 'efectivo', planComm, data.iva);
-          fgEfectivo += fgCut;
+          fgTransferencia += Math.max(0, amount - planComm);
+          atlasTransferencia += planComm;
+        }
+      } else {
+        totalEfectivo += amount;
+        pagosEfectivoCount++;
+        if (plan) {
+          const cut = calculateFitnessGroupCut(plan.basePrice, 'efectivo', data.iva);
+          fgEfectivo += cut;
+          atlasEfectivo += (amount - cut);
+        } else {
+          fgEfectivo += Math.max(0, amount - planComm);
+          atlasEfectivo += planComm;
         }
       }
     }
   });
 
-  const filteredHistory = paymentHistory.filter(tx => 
+  const filteredHistory = monthTransactions.filter(tx => 
     (tx.beneficiary || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (tx.details || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (tx.ref && tx.ref.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -204,14 +231,23 @@ const Payments = () => {
 
   return (
     <div className="payments-page">
-      <div className="flex-between mb-6">
+      <div className="flex-between mb-6" style={{ flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1>Pagos e Historial</h1>
           <p>Diferencial de ingresos y liquidaciones a Fitness Groups</p>
         </div>
-        <button className="btn btn-primary" onClick={handleOpenCreateModal}>
-          <Plus size={18} /> Registrar Transacción
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <MonthSelector 
+            selectedMonth={selectedMonth} 
+            onChange={setSelectedMonth} 
+            transactions={paymentHistory} 
+            includeAllOption={true}
+            label="Período"
+          />
+          <button className="btn btn-primary" onClick={handleOpenCreateModal}>
+            <Plus size={18} /> Registrar Transacción
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
@@ -221,7 +257,10 @@ const Payments = () => {
               <Landmark size={20} color="var(--info)" />
               Ingresos por Transferencia
             </h3>
-            <span style={{ fontSize: '1.25rem', fontWeight: 700 }}>${totalTransferencia.toLocaleString()}</span>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '1.25rem', fontWeight: 700, display: 'block' }}>${totalTransferencia.toLocaleString()}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{pagosTransferenciaCount} pago{pagosTransferenciaCount === 1 ? '' : 's'}</span>
+            </div>
           </div>
           <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--radius-sm)' }}>
             <div className="flex-between mb-2" style={{ fontSize: '0.9rem' }}>
@@ -241,7 +280,10 @@ const Payments = () => {
               <Briefcase size={20} color="var(--success)" />
               Ingresos en Efectivo
             </h3>
-            <span style={{ fontSize: '1.25rem', fontWeight: 700 }}>${totalEfectivo.toLocaleString()}</span>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '1.25rem', fontWeight: 700, display: 'block' }}>${totalEfectivo.toLocaleString()}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{pagosEfectivoCount} pago{pagosEfectivoCount === 1 ? '' : 's'}</span>
+            </div>
           </div>
           <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--radius-sm)' }}>
             <div className="flex-between mb-2" style={{ fontSize: '0.9rem' }}>
@@ -261,7 +303,7 @@ const Payments = () => {
           <div>
             <h3 style={{ margin: 0 }}>Historial de Transacciones</h3>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              {filteredHistory.length} transacci{filteredHistory.length === 1 ? 'ón' : 'ones'} registrada{filteredHistory.length === 1 ? '' : 's'}
+              {filteredHistory.length} transacci{filteredHistory.length === 1 ? 'ón' : 'ones'} ({formatMonthLabel(selectedMonth)})
             </span>
           </div>
           <div className="input-group" style={{ margin: 0, width: '300px' }}>
